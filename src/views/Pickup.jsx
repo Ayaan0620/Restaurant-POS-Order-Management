@@ -38,7 +38,13 @@ function makeBeeper() {
 
 export default function Pickup() {
   return (
-    <PinGate viewKey="pickup" pin={import.meta.env.VITE_PICKUP_PIN} title="Pickup" accent="#059669">
+    <PinGate
+      viewKey="pickup"
+      pin={import.meta.env.VITE_PICKUP_PIN}
+      pinHash={import.meta.env.VITE_PICKUP_PIN_HASH}
+      title="Pickup"
+      accent="#059669"
+    >
       <PickupView />
     </PinGate>
   )

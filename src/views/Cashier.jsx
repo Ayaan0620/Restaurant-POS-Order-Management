@@ -45,7 +45,13 @@ function useGroupedMenu(menu) {
 
 export default function Cashier() {
   return (
-    <PinGate viewKey="cashier" pin={import.meta.env.VITE_CASHIER_PIN} title="Cashier" accent="#2563eb">
+    <PinGate
+      viewKey="cashier"
+      pin={import.meta.env.VITE_CASHIER_PIN}
+      pinHash={import.meta.env.VITE_CASHIER_PIN_HASH}
+      title="Cashier"
+      accent="#2563eb"
+    >
       <CashierView />
     </PinGate>
   )

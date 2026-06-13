@@ -15,7 +15,13 @@ const findCategory = (name) => ITEM_CATEGORY[name] || 'Other'
 
 export default function Reports() {
   return (
-    <PinGate viewKey="reports" pin={import.meta.env.VITE_REPORTS_PIN} title="Admin" accent="#7c3aed">
+    <PinGate
+      viewKey="reports"
+      pin={import.meta.env.VITE_REPORTS_PIN}
+      pinHash={import.meta.env.VITE_REPORTS_PIN_HASH}
+      title="Admin"
+      accent="#7c3aed"
+    >
       <AdminView />
     </PinGate>
   )

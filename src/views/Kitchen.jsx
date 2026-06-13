@@ -9,7 +9,13 @@ import PinGate, { lockView } from '../components/PinGate.jsx'
 // Read-only, dark, oversized queue for kitchen staff to glance at.
 export default function Kitchen() {
   return (
-    <PinGate viewKey="kitchen" pin={import.meta.env.VITE_KITCHEN_PIN} title="Kitchen" accent="#0f172a">
+    <PinGate
+      viewKey="kitchen"
+      pin={import.meta.env.VITE_KITCHEN_PIN}
+      pinHash={import.meta.env.VITE_KITCHEN_PIN_HASH}
+      title="Kitchen"
+      accent="#0f172a"
+    >
       <KitchenView />
     </PinGate>
   )
