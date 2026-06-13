@@ -1,17 +1,38 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-// Per-view PIN gate. Wrap a view in <PinGate viewKey="cashier" pin={...} title="Cashier">.
-// - If `pin` is empty/undefined, the view is open (no gate).
-// - On success, the unlock is remembered per-device in localStorage, so each
-//   device only enters the PIN once (until it's locked again or storage clears).
+// Per-view PIN gate.
+//
+// SECURITY: prefer the *hashed* form. Each view can be configured with either:
+//   - VITE_<VIEW>_PIN_HASH : the SHA-256 hex of the PIN (recommended — no
+//                            plaintext password ends up in the shipped bundle)
+//   - VITE_<VIEW>_PIN      : the plaintext PIN (simple, but readable in source)
+// If neither is set, the view is open (no gate).
+//
+// Generate a hash with:  npm run hash-pin -- 1234
+//
+// Note: this gates the UI only. It is deterrence, not strong security — see the
+// README "Security" section. For true protection use a real login.
 
 const storageKey = (viewKey) => `pin_ok_${viewKey}`
 
-function isUnlocked(viewKey, pin) {
-  if (!pin) return true // no PIN configured -> open
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// The "expected" token we compare against: the hash if configured, else the
+// plaintext PIN, else null (open).
+function expectedToken({ pin, pinHash }) {
+  if (pinHash) return String(pinHash).trim().toLowerCase()
+  if (pin) return String(pin)
+  return null
+}
+
+function isUnlocked(viewKey, token) {
+  if (!token) return true // no PIN configured -> open
   try {
-    return localStorage.getItem(storageKey(viewKey)) === pin
+    return localStorage.getItem(storageKey(viewKey)) === token
   } catch {
     return false
   }
@@ -27,24 +48,34 @@ export function lockView(viewKey) {
   window.location.reload()
 }
 
-export default function PinGate({ viewKey, pin, title, accent = '#2563eb', children }) {
-  const [ok, setOk] = useState(() => isUnlocked(viewKey, pin))
+export default function PinGate({ viewKey, pin, pinHash, title, accent = '#2563eb', children }) {
+  const token = expectedToken({ pin, pinHash })
+  const hashed = Boolean(pinHash)
+  const [ok, setOk] = useState(() => isUnlocked(viewKey, token))
   const [entry, setEntry] = useState('')
   const [error, setError] = useState(false)
+  const [checking, setChecking] = useState(false)
 
   if (ok) return children
 
-  function submit() {
-    if (entry === pin && pin !== '') {
-      try {
-        localStorage.setItem(storageKey(viewKey), pin)
-      } catch {
-        /* ignore */
+  async function submit() {
+    if (!token || checking) return
+    setChecking(true)
+    try {
+      const candidate = hashed ? await sha256Hex(entry) : entry
+      if (candidate === token && entry !== '') {
+        try {
+          localStorage.setItem(storageKey(viewKey), token)
+        } catch {
+          /* ignore */
+        }
+        setOk(true)
+      } else {
+        setError(true)
+        setEntry('')
       }
-      setOk(true)
-    } else {
-      setError(true)
-      setEntry('')
+    } finally {
+      setChecking(false)
     }
   }
 
@@ -69,10 +100,11 @@ export default function PinGate({ viewKey, pin, title, accent = '#2563eb', child
       {error && <p className="mb-3 text-sm font-medium text-red-500">Wrong PIN — try again</p>}
       <button
         onClick={submit}
-        className="min-h-touch w-44 rounded-xl py-3 text-lg font-bold text-white"
+        disabled={checking}
+        className="min-h-touch w-44 rounded-xl py-3 text-lg font-bold text-white disabled:opacity-60"
         style={{ background: accent }}
       >
-        Unlock
+        {checking ? 'Checking…' : 'Unlock'}
       </button>
       <Link to="/" className="mt-6 text-sm text-slate-400">
         ← Home

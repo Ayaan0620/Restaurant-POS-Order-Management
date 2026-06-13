@@ -41,13 +41,14 @@ Edit `.env`:
 ```
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY
-# Each view has its own PIN. Each device enters it once, then stays unlocked.
-# Choose your own values — do NOT commit real PINs.
-VITE_CASHIER_PIN=0000
-VITE_PICKUP_PIN=0000
-VITE_KITCHEN_PIN=0000
-VITE_REPORTS_PIN=0000
+# Each view has its own PIN. Store SHA-256 HASHES so no plaintext PIN ships in
+# the app. Generate one with:  npm run hash-pin -- 1234
+VITE_CASHIER_PIN_HASH=<hash>
+VITE_PICKUP_PIN_HASH=<hash>
+VITE_KITCHEN_PIN_HASH=<hash>
+VITE_REPORTS_PIN_HASH=<hash>
 ```
+See **Security** below for what these do and don't protect.
 
 > **Upgrading an existing database?** The simplest, safest way to get every new
 > column and table is to **paste the whole [`supabase/schema.sql`](supabase/schema.sql)
@@ -114,6 +115,28 @@ the payment method, discount %, subtotal, card fee (cost), and total for every o
    orders**; the cashier is warned before closing the tab while any remain.
 5. The screen is kept awake (Wake-Lock) on cashier/pickup during service.
 6. Orders are only ever **status-changed** (collected / voided), never deleted.
+
+## Security
+
+This is a **login-free** app, so be clear-eyed about what that means:
+
+- **PINs are hashed, not plaintext.** The app stores a SHA-256 hash of each PIN, so
+  "view source" on the deployed site never reveals a password. (Generate hashes with
+  `npm run hash-pin -- <PIN>`.) This is **deterrence, not strong security** — PINs gate
+  the *screens*, and short numeric PINs can still be brute-forced. Use longer, distinct
+  PINs, especially for Admin.
+- **The Supabase anon/publishable key is public by design.** It ships in the browser and
+  that's expected. What protects you is the database policy (RLS), not hiding the key.
+  **Never** put the `service_role` key in any `VITE_` variable.
+- **Database is hardened against deletion.** RLS allows read/insert/update but **no
+  delete**, so orders can't be wiped through the API (`schema.sql` /
+  `migration-harden-rls.sql`).
+- **Honest limit:** because a login-free app must read/write with the public key, someone
+  who extracts that key could still *read* order data directly from Supabase's API. PINs
+  can't prevent that. If the data must be truly private, add **Supabase Auth + RLS that
+  requires a logged-in user** — the only real fix. (Happy to add this later.)
+- **Secrets stay out of Git.** `.env` is git-ignored; `.env.example` and the README use
+  placeholders only.
 
 ## Notes & possible next steps
 - Order numbers are 3-digit, padded (`001`, `002`, …) and **reset each day** (keyed on
