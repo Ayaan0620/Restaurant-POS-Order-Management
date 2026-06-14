@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_ORDER } from '../menu.config.js'
 import { euro, todayISO, clockTime } from '../lib/format.js'
-import { useOrders, useWakeLock, useUnsyncedGuard } from '../lib/useOrders.js'
+import { useOrders, useKeepAwake, useUnsyncedGuard } from '../lib/useOrders.js'
 import { useMenu } from '../lib/useMenu.js'
 import {
   Lock,
@@ -15,10 +15,13 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import VegDot from '../components/VegDot.jsx'
 import ConnectionDot from '../components/ConnectionDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
+import OfflineBanner from '../components/OfflineBanner.jsx'
 
 const PRESETS = [5, 10, 20, 50] // change-calculator cash denominations
 const DISCOUNTS = [5, 10, 15, 20] // discount % quick buttons
@@ -60,7 +63,7 @@ export default function Cashier() {
 function CashierView() {
   const { createOrder, orders, nextOrderNumber, connection, unsyncedCount } = useOrders()
   const { menu } = useMenu()
-  useWakeLock(true)
+  const { awake, toggle: toggleAwake } = useKeepAwake()
   useUnsyncedGuard(unsyncedCount)
 
   // Today's orders, newest first — for the "last sticky-note number" + history.
@@ -158,6 +161,13 @@ function CashierView() {
           </Link>
           <h1 className="text-lg font-bold text-slate-900">Cashier</h1>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleAwake}
+              className={`p-1 ${awake ? 'text-amber-500' : 'text-slate-400'}`}
+              title={awake ? 'Screen stays awake (tap to allow sleep)' : 'Screen can sleep (tap to keep awake)'}
+            >
+              {awake ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
             <ConnectionDot connection={connection} unsyncedCount={unsyncedCount} />
             <button onClick={() => lockView('cashier')} className="p-1 text-slate-500" title="Lock view">
               <Lock size={20} />
@@ -183,6 +193,8 @@ function CashierView() {
           </button>
         </div>
       </header>
+
+      <OfflineBanner connection={connection} />
 
       {/* Non-veg (left) vs Veg (right) column headers */}
       <div className="grid grid-cols-2 gap-2 px-3 pt-3">

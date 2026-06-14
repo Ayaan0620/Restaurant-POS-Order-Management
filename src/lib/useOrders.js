@@ -32,6 +32,29 @@ export function useOrders() {
   }
 }
 
+// Keep-awake with a user toggle, persisted per device. Default on.
+export function useKeepAwake() {
+  const [awake, setAwake] = useState(() => {
+    try {
+      return localStorage.getItem('keep_awake') !== '0'
+    } catch {
+      return true
+    }
+  })
+  useWakeLock(awake)
+  const toggle = () =>
+    setAwake((a) => {
+      const next = !a
+      try {
+        localStorage.setItem('keep_awake', next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  return { awake, toggle }
+}
+
 // Keep the device awake while a critical view is open (cashier / pickup).
 // Re-acquires the lock when the tab becomes visible again.
 export function useWakeLock(enabled = true) {
