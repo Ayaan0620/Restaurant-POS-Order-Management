@@ -53,7 +53,7 @@ export default function Cashier() {
       pin={import.meta.env.VITE_CASHIER_PIN}
       pinHash={import.meta.env.VITE_CASHIER_PIN_HASH}
       title="Cashier"
-      accent="#4f46e5"
+      accent="#ea580c"
     >
       <CashierView />
     </PinGate>
