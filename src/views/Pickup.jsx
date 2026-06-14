@@ -10,29 +10,47 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
 const STALE_MINUTES = 15
 
-// Lazily-created beep using the Web Audio API (no asset file needed).
+// A loud 3-pulse chime via the Web Audio API (no asset file needed).
+// Must be created inside a user gesture so the browser allows audio.
 function makeBeeper() {
-  let ctx = null
-  return function beep() {
-    try {
-      ctx ||= new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') ctx.resume()
-      const t = ctx.currentTime
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(880, t)
-      osc.frequency.setValueAtTime(1175, t + 0.12)
-      gain.gain.setValueAtTime(0.0001, t)
-      gain.gain.exponentialRampToValueAtTime(0.5, t + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
-      osc.start(t)
-      osc.stop(t + 0.36)
-    } catch {
-      /* ignore audio failures */
-    }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+
+  function tone(at, freq, dur) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    gain.gain.setValueAtTime(0.0001, at)
+    gain.gain.exponentialRampToValueAtTime(0.9, at + 0.02) // loud
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur)
+    osc.start(at)
+    osc.stop(at + dur + 0.02)
+  }
+
+  return {
+    // Resolve once the context is actually running (call inside a click).
+    unlock() {
+      return ctx.state === 'suspended' ? ctx.resume() : Promise.resolve()
+    },
+    beep() {
+      try {
+        if (ctx.state === 'suspended') ctx.resume()
+        const t = ctx.currentTime + 0.04
+        tone(t, 880, 0.16)
+        tone(t + 0.2, 1175, 0.16)
+        tone(t + 0.4, 1568, 0.22)
+      } catch {
+        /* ignore audio failures */
+      }
+      // Vibrate too (Android); harmless where unsupported.
+      try {
+        navigator.vibrate?.([180, 90, 180])
+      } catch {
+        /* ignore */
+      }
+    },
   }
 }
 
@@ -100,7 +118,7 @@ function PickupView() {
     }
     const fresh = [...ids].filter((id) => !seenRef.current.has(id))
     if (fresh.length > 0) {
-      if (soundOn && beepRef.current) beepRef.current()
+      if (soundOn && beepRef.current) beepRef.current.beep()
       setFlashIds(new Set(fresh))
       const t = setTimeout(() => setFlashIds(new Set()), 1400)
       seenRef.current = ids
@@ -109,10 +127,16 @@ function PickupView() {
     seenRef.current = ids
   }, [active, soundOn])
 
-  function enableSound() {
-    beepRef.current = makeBeeper()
-    beepRef.current() // unlock audio within the user gesture
-    setSoundOn(true)
+  async function enableSound() {
+    try {
+      const b = makeBeeper()
+      await b.unlock() // unlock audio within the user gesture
+      b.beep() // confirmation chime so they know it works
+      beepRef.current = b
+      setSoundOn(true)
+    } catch {
+      setSoundOn(true)
+    }
   }
 
   return (
@@ -125,12 +149,20 @@ function PickupView() {
           Pickup <span className="text-slate-400">({active.length})</span>
         </h1>
         <div className="flex items-center gap-2">
-          {!soundOn && (
+          {!soundOn ? (
             <button
               onClick={enableSound}
               className="flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white"
             >
               <Volume2 size={16} /> Sound
+            </button>
+          ) : (
+            <button
+              onClick={() => beepRef.current?.beep()}
+              className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700"
+              title="Test the alert sound"
+            >
+              <Volume2 size={16} /> Test
             </button>
           )}
           <ConnectionDot connection={connection} unsyncedCount={unsyncedCount} />
