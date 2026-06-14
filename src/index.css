@@ -10,9 +10,13 @@ body,
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Aligned figures for money/numbers — a small but real "production" detail. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.011em;
+  color: #0f172a;
   /* Respect device notches / home indicator. */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);

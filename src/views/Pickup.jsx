@@ -159,7 +159,7 @@ function PickupView() {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-6">
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-white px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
         <Link to="/" className="text-sm font-medium text-slate-500">
           ← Home
         </Link>

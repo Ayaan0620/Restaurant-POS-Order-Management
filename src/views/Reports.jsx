@@ -24,7 +24,7 @@ export default function Reports() {
       pin={import.meta.env.VITE_REPORTS_PIN}
       pinHash={import.meta.env.VITE_REPORTS_PIN_HASH}
       title="Admin"
-      accent="#7c3aed"
+      accent="#4f46e5"
     >
       <AdminView />
     </PinGate>
@@ -35,7 +35,7 @@ function AdminView() {
   const [tab, setTab] = useState('reports')
   return (
     <div className="min-h-screen bg-slate-100 pb-10">
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-white px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
         <Link to="/" className="text-sm font-medium text-slate-500">
           ← Home
         </Link>
@@ -67,7 +67,7 @@ function AdminTab({ active, onClick, children }) {
     <button
       onClick={onClick}
       className={`flex min-h-touch flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-base font-bold ${
-        active ? 'bg-violet-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
+        active ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
       }`}
     >
       {children}
@@ -116,7 +116,7 @@ function ReportsBody() {
           <button
             onClick={() => exportCSV(dayOrders, date)}
             disabled={dayOrders.length === 0}
-            className="min-h-touch rounded-xl bg-violet-600 px-4 py-3 font-bold text-white disabled:bg-slate-300"
+            className="min-h-touch rounded-xl bg-brand-600 px-4 py-3 font-bold text-white disabled:bg-slate-300"
           >
             Export CSV
           </button>
@@ -573,14 +573,14 @@ function Section({ title, children }) {
   return (
     <section className="mt-5">
       <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">{title}</h2>
-      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">{children}</div>
+      <div className="rounded-2xl bg-white p-4 border border-slate-200">{children}</div>
     </section>
   )
 }
 
 function Stat({ label, value, hint, accent }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+    <div className="rounded-2xl bg-white p-4 border border-slate-200">
       <p className="text-sm text-slate-500">{label}</p>
       <p className={`text-2xl font-black ${accent || 'text-slate-900'}`}>{value}</p>
       {hint && <p className="text-xs text-slate-400">{hint}</p>}
@@ -676,7 +676,7 @@ function MenuEditor() {
 
       <ul className="space-y-3">
         {draft.map((it) => (
-          <li key={it.id} className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+          <li key={it.id} className="rounded-2xl bg-white p-3 border border-slate-200">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => update(it.id, { veg: !it.veg })}
@@ -760,7 +760,7 @@ function MenuEditor() {
         <button
           onClick={save}
           disabled={!dirty}
-          className="min-h-touch rounded-xl bg-violet-600 px-6 py-3 font-bold text-white disabled:bg-slate-300"
+          className="min-h-touch rounded-xl bg-brand-600 px-6 py-3 font-bold text-white disabled:bg-slate-300"
         >
           Save changes
         </button>
@@ -776,7 +776,7 @@ function BreakEven({ net, costs }) {
   const remaining = costs - net
   const broke = remaining <= 0 && costs > 0
   return (
-    <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+    <div className="mb-4 rounded-2xl bg-white p-4 border border-slate-200">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Break-even (all days)</h2>
         <span
@@ -805,7 +805,7 @@ function BreakEven({ net, costs }) {
       </div>
       <p className="mt-2 text-center text-sm font-bold">
         {broke ? (
-          <span className="text-emerald-600">Broke even — profit {euro(-remaining)} 🎉</span>
+          <span className="text-emerald-600">Broke even — profit {euro(-remaining)}</span>
         ) : (
           <span className="text-amber-700">{euro(Math.max(0, remaining))} more to break even</span>
         )}
@@ -867,14 +867,14 @@ function ExpensesEditor() {
         Your costs — used for the break-even tracker on the Reports tab.
       </p>
 
-      <div className="mb-3 flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+      <div className="mb-3 flex items-center justify-between rounded-2xl bg-white p-4 border border-slate-200">
         <span className="text-lg font-bold text-slate-600">Total costs</span>
         <span className="text-2xl font-black text-slate-900">{euro(total)}</span>
       </div>
 
       <ul className="space-y-2">
         {draft.map((e) => (
-          <li key={e.id} className="flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm ring-1 ring-black/5">
+          <li key={e.id} className="flex items-center gap-2 rounded-xl bg-white p-2 border border-slate-200">
             <input
               value={e.label}
               onChange={(ev) => update(e.id, { label: ev.target.value })}
@@ -931,7 +931,7 @@ function ExpensesEditor() {
         <button
           onClick={save}
           disabled={!dirty}
-          className="min-h-touch rounded-xl bg-violet-600 px-6 py-3 font-bold text-white disabled:bg-slate-300"
+          className="min-h-touch rounded-xl bg-brand-600 px-6 py-3 font-bold text-white disabled:bg-slate-300"
         >
           Save changes
         </button>
