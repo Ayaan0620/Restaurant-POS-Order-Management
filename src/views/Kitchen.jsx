@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { elapsed } from '../lib/format.js'
 import { useOrders, useKeepAwake, useTicker } from '../lib/useOrders.js'
-import { Lock, Package, Utensils, Sun, Moon } from 'lucide-react'
+import { useNewOrderSound } from '../lib/useNewOrderSound.js'
+import { Lock, Package, Utensils, Sun, Moon, Volume2 } from 'lucide-react'
 import VegDot from '../components/VegDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
 import OfflineBanner from '../components/OfflineBanner.jsx'
@@ -35,6 +36,9 @@ function KitchenView() {
     [orders],
   )
 
+  // Bell chime on every new order (on by default — arms on first tap).
+  const { soundReady, test } = useNewOrderSound(active)
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="sticky top-0 z-10 bg-amber-500 px-4 py-3 text-center">
@@ -45,12 +49,25 @@ function KitchenView() {
 
       <OfflineBanner connection={connection} />
 
+      {!soundReady && (
+        <div className="bg-amber-400 px-4 py-2 text-center text-sm font-bold text-slate-900">
+          Tap anywhere to turn on the new-order bell
+        </div>
+      )}
+
       <div className="flex items-center justify-between px-4 py-2 text-slate-400">
         <Link to="/" className="text-sm">
           ← Home
         </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold">{active.length} active</span>
+          <button
+            onClick={test}
+            className="flex items-center gap-1 rounded-full bg-slate-800 px-3 py-1 text-sm font-bold text-emerald-400"
+            title="Test the alert sound"
+          >
+            <Volume2 size={16} /> Test
+          </button>
           <button
             onClick={toggleAwake}
             className={`p-1 ${awake ? 'text-amber-400' : 'text-slate-500'}`}

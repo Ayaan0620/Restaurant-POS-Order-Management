@@ -24,7 +24,7 @@ export default function Reports() {
       pin={import.meta.env.VITE_REPORTS_PIN}
       pinHash={import.meta.env.VITE_REPORTS_PIN_HASH}
       title="Admin"
-      accent="#4f46e5"
+      accent="#ea580c"
     >
       <AdminView />
     </PinGate>

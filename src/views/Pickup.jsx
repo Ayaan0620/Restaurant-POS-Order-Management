@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { euro, elapsed, minutesSince, clockTime } from '../lib/format.js'
 import { useOrders, useKeepAwake, useUnsyncedGuard, useTicker } from '../lib/useOrders.js'
+import { useNewOrderSound } from '../lib/useNewOrderSound.js'
 import { Lock, Volume2, Package, Utensils, Check, X, RotateCcw, Sun, Moon } from 'lucide-react'
 import VegDot from '../components/VegDot.jsx'
 import ConnectionDot from '../components/ConnectionDot.jsx'
@@ -10,50 +11,6 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import OfflineBanner from '../components/OfflineBanner.jsx'
 
 const STALE_MINUTES = 15
-
-// A loud 3-pulse chime via the Web Audio API (no asset file needed).
-// Must be created inside a user gesture so the browser allows audio.
-function makeBeeper() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
-
-  function tone(at, freq, dur) {
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    gain.gain.setValueAtTime(0.0001, at)
-    gain.gain.exponentialRampToValueAtTime(0.9, at + 0.02) // loud
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur)
-    osc.start(at)
-    osc.stop(at + dur + 0.02)
-  }
-
-  return {
-    // Resolve once the context is actually running (call inside a click).
-    unlock() {
-      return ctx.state === 'suspended' ? ctx.resume() : Promise.resolve()
-    },
-    beep() {
-      try {
-        if (ctx.state === 'suspended') ctx.resume()
-        const t = ctx.currentTime + 0.04
-        tone(t, 880, 0.16)
-        tone(t + 0.2, 1175, 0.16)
-        tone(t + 0.4, 1568, 0.22)
-      } catch {
-        /* ignore audio failures */
-      }
-      // Vibrate too (Android); harmless where unsupported.
-      try {
-        navigator.vibrate?.([180, 90, 180])
-      } catch {
-        /* ignore */
-      }
-    },
-  }
-}
 
 export default function Pickup() {
   return (
@@ -75,11 +32,9 @@ function PickupView() {
   useUnsyncedGuard(unsyncedCount)
   useTicker(1000) // refresh elapsed timers
 
-  const [soundReady, setSoundReady] = useState(false)
   const [flashIds, setFlashIds] = useState(() => new Set())
   const [tab, setTab] = useState('active') // 'active' | 'past'
   const [confirmState, setConfirmState] = useState(null) // { kind, order }
-  const beepRef = useRef(null)
   const seenRef = useRef(null) // ids we've already shown (null until first load)
 
   const active = useMemo(
@@ -89,6 +44,9 @@ function PickupView() {
         .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
     [orders],
   )
+
+  // Bell chime on every new order (on by default — arms on first tap).
+  const { soundReady, test } = useNewOrderSound(active)
 
   // Past = collected or voided, most recently handled first.
   const past = useMemo(
@@ -110,52 +68,21 @@ function PickupView() {
     setConfirmState(null)
   }
 
-  // Detect newly-arrived active orders → beep + flash.
+  // Visually flash newly-arrived active order cards (sound is handled by the hook).
   useEffect(() => {
     const ids = new Set(active.map((o) => o.id))
     if (seenRef.current === null) {
-      seenRef.current = ids // first render: don't alert for existing orders
+      seenRef.current = ids // first render: don't flash existing orders
       return
     }
     const fresh = [...ids].filter((id) => !seenRef.current.has(id))
+    seenRef.current = ids
     if (fresh.length > 0) {
-      if (beepRef.current) beepRef.current.beep()
       setFlashIds(new Set(fresh))
       const t = setTimeout(() => setFlashIds(new Set()), 1400)
-      seenRef.current = ids
       return () => clearTimeout(t)
     }
-    seenRef.current = ids
   }, [active])
-
-  // Sound is "on by default": browsers require one interaction before audio is
-  // allowed, so we arm it on the FIRST tap/keypress anywhere on the screen
-  // (which happens within seconds of opening the view).
-  useEffect(() => {
-    if (soundReady) return
-    let done = false
-    const arm = async () => {
-      if (done) return
-      done = true
-      try {
-        const b = makeBeeper()
-        await b.unlock()
-        b.beep() // confirmation chime
-        beepRef.current = b
-      } catch {
-        /* ignore */
-      }
-      setSoundReady(true)
-      window.removeEventListener('pointerdown', arm)
-      window.removeEventListener('keydown', arm)
-    }
-    window.addEventListener('pointerdown', arm)
-    window.addEventListener('keydown', arm)
-    return () => {
-      window.removeEventListener('pointerdown', arm)
-      window.removeEventListener('keydown', arm)
-    }
-  }, [soundReady])
 
   return (
     <div className="min-h-screen bg-slate-100 pb-6">
@@ -168,7 +95,7 @@ function PickupView() {
         </h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => beepRef.current?.beep()}
+            onClick={test}
             className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700"
             title="Test the alert sound"
           >

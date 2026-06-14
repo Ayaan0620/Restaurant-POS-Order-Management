@@ -4,9 +4,9 @@ import { Receipt, BellRing, CookingPot, ChevronRight, UtensilsCrossed } from 'lu
 
 // Admin is intentionally NOT listed — it's hidden (secret gesture below).
 const STATIONS = [
-  { to: '/cashier', label: 'Cashier', sub: 'Take orders and payments', Icon: Receipt },
-  { to: '/pickup', label: 'Pickup', sub: 'Assemble and call numbers', Icon: BellRing },
-  { to: '/kitchen', label: 'Kitchen', sub: 'Live order queue', Icon: CookingPot },
+  { to: '/cashier', label: 'Cashier', sub: 'Take orders and payments', Icon: Receipt, tint: 'bg-brand-50 text-brand-600' },
+  { to: '/pickup', label: 'Pickup', sub: 'Assemble and call numbers', Icon: BellRing, tint: 'bg-emerald-50 text-emerald-600' },
+  { to: '/kitchen', label: 'Kitchen', sub: 'Live order queue', Icon: CookingPot, tint: 'bg-sky-50 text-sky-600' },
 ]
 
 export default function Home() {
@@ -30,12 +30,12 @@ export default function Home() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
       <header className="mb-10 flex items-center gap-3" onClick={secretTap}>
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
           <UtensilsCrossed size={22} strokeWidth={2.2} />
         </div>
         <div className="select-none">
           <h1 className="text-xl font-semibold tracking-tight text-slate-900">Stall Orders</h1>
-          <p className="text-sm text-slate-500">Point of sale</p>
+          <p className="text-sm text-slate-500">Festival point of sale</p>
         </div>
       </header>
 
@@ -47,7 +47,7 @@ export default function Home() {
             to={s.to}
             className="group flex min-h-touch items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-4 transition-colors active:bg-slate-50"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${s.tint}`}>
               <s.Icon size={20} strokeWidth={2} />
             </div>
             <div className="flex-1">
