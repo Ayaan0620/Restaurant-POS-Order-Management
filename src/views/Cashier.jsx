@@ -53,7 +53,7 @@ export default function Cashier() {
       pin={import.meta.env.VITE_CASHIER_PIN}
       pinHash={import.meta.env.VITE_CASHIER_PIN_HASH}
       title="Cashier"
-      accent="#2563eb"
+      accent="#4f46e5"
     >
       <CashierView />
     </PinGate>
@@ -154,7 +154,7 @@ function CashierView() {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-28">
-      <header className="sticky top-0 z-20 bg-white shadow-sm">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between px-4 py-3">
           <Link to="/" className="text-sm font-medium text-slate-500">
             ← Home
@@ -180,14 +180,14 @@ function CashierView() {
             Last note: <b className="text-slate-900">#{lastNumber || '—'}</b>
           </span>
           <span className="text-slate-500">
-            Next: <b className="text-blue-600">#{nextNumber}</b>
+            Next: <b className="text-brand-600">#{nextNumber}</b>
           </span>
           <button
             onClick={() => {
               setTab('history')
               setSheetOpen(true)
             }}
-            className="font-bold text-blue-600"
+            className="font-bold text-brand-600"
           >
             History ({todaysOrders.length})
           </button>
@@ -278,13 +278,13 @@ function CashierView() {
       {overlay && (
         <button
           onClick={() => setOverlay(null)}
-          className="fixed inset-0 z-50 flex w-full flex-col items-center justify-center bg-blue-600 text-white"
+          className="fixed inset-0 z-50 flex w-full flex-col items-center justify-center bg-brand-600 text-white"
           aria-label="Dismiss order number"
         >
-          <p className="text-2xl font-semibold uppercase tracking-widest text-blue-100">Order</p>
+          <p className="text-2xl font-semibold uppercase tracking-widest text-brand-100">Order</p>
           <p className="text-[34vw] font-black leading-none">#{overlay}</p>
-          <p className="mt-4 text-lg text-blue-100">Write this on the sticky note</p>
-          <p className="mt-6 text-sm text-blue-200">Tap anywhere to dismiss</p>
+          <p className="mt-4 text-lg text-brand-100">Write this on the sticky note</p>
+          <p className="mt-6 text-sm text-brand-200">Tap anywhere to dismiss</p>
         </button>
       )}
     </div>
@@ -368,7 +368,7 @@ function TabButton({ active, onClick, children }) {
     <button
       onClick={onClick}
       className={`min-h-touch flex-1 rounded-xl px-4 py-2 text-base font-bold ${
-        active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+        active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
       }`}
     >
       {children}
@@ -485,7 +485,7 @@ function CartPanel({
       <button
         onClick={sendOrder}
         disabled={cart.length === 0 || sending}
-        className="mt-3 min-h-touch w-full rounded-xl bg-blue-600 py-4 text-xl font-bold text-white disabled:bg-slate-300 active:bg-blue-700"
+        className="mt-3 min-h-touch w-full rounded-xl bg-brand-600 py-4 text-xl font-bold text-white disabled:bg-slate-300 active:bg-brand-700"
       >
         {sending ? 'Sending…' : 'Send Order'}
       </button>

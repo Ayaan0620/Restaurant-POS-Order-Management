@@ -1,12 +1,12 @@
 import { useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Receipt, BellRing, CookingPot } from 'lucide-react'
+import { Receipt, BellRing, CookingPot, ChevronRight, UtensilsCrossed } from 'lucide-react'
 
-// Admin is intentionally NOT listed here — it's hidden (see secret gesture below).
-const LINKS = [
-  { to: '/cashier', label: 'Cashier', sub: 'Take orders', Icon: Receipt, cls: 'bg-blue-600' },
-  { to: '/pickup', label: 'Pickup', sub: 'Assemble & call', Icon: BellRing, cls: 'bg-emerald-600' },
-  { to: '/kitchen', label: 'Kitchen', sub: 'Read-only queue', Icon: CookingPot, cls: 'bg-slate-800' },
+// Admin is intentionally NOT listed — it's hidden (secret gesture below).
+const STATIONS = [
+  { to: '/cashier', label: 'Cashier', sub: 'Take orders and payments', Icon: Receipt },
+  { to: '/pickup', label: 'Pickup', sub: 'Assemble and call numbers', Icon: BellRing },
+  { to: '/kitchen', label: 'Kitchen', sub: 'Live order queue', Icon: CookingPot },
 ]
 
 export default function Home() {
@@ -14,8 +14,7 @@ export default function Home() {
   const taps = useRef(0)
   const timer = useRef(null)
 
-  // Secret admin access: tap the title 5 times quickly. Nothing on screen hints
-  // at it, so staff/customers never stumble into the owner's reports.
+  // Secret admin access: tap the wordmark 5 times quickly.
   function secretTap() {
     taps.current += 1
     clearTimeout(timer.current)
@@ -29,36 +28,39 @@ export default function Home() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-8">
-      <header className="mb-8 text-center">
-        <h1
-          className="cursor-default select-none text-3xl font-extrabold text-slate-900"
-          onClick={secretTap}
-          title=""
-        >
-          Stall Orders
-        </h1>
-        <p className="mt-1 text-slate-500">Bookmark a view on each device</p>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-10">
+      <header className="mb-10 flex items-center gap-3" onClick={secretTap}>
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <UtensilsCrossed size={22} strokeWidth={2.2} />
+        </div>
+        <div className="select-none">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Stall Orders</h1>
+          <p className="text-sm text-slate-500">Point of sale</p>
+        </div>
       </header>
 
-      <nav className="grid gap-4">
-        {LINKS.map((l) => (
+      <p className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">Stations</p>
+      <nav className="flex flex-col gap-2.5">
+        {STATIONS.map((s) => (
           <Link
-            key={l.to}
-            to={l.to}
-            className={`flex min-h-touch items-center gap-4 rounded-2xl ${l.cls} px-6 py-6 text-white shadow-lg active:opacity-90`}
+            key={s.to}
+            to={s.to}
+            className="group flex min-h-touch items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-4 transition-colors active:bg-slate-50"
           >
-            <l.Icon size={36} strokeWidth={2} />
-            <span className="flex flex-col">
-              <span className="text-2xl font-bold">{l.label}</span>
-              <span className="text-sm text-white/80">{l.sub}</span>
-            </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+              <s.Icon size={20} strokeWidth={2} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-900">{s.label}</p>
+              <p className="text-sm text-slate-500">{s.sub}</p>
+            </div>
+            <ChevronRight size={18} className="text-slate-300 group-active:text-slate-400" />
           </Link>
         ))}
       </nav>
 
-      <p className="mt-auto pt-8 text-center text-xs text-slate-400">
-        Each view has its own URL — open it on the right device and bookmark it.
+      <p className="mt-auto pt-10 text-center text-xs text-slate-400">
+        Open a station on its device and add it to the home screen.
       </p>
     </div>
   )
