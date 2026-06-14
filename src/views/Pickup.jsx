@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { euro, elapsed, minutesSince, clockTime } from '../lib/format.js'
-import { useOrders, useWakeLock, useUnsyncedGuard, useTicker } from '../lib/useOrders.js'
-import { Lock, Volume2, Package, Utensils, Check, X, RotateCcw } from 'lucide-react'
+import { useOrders, useKeepAwake, useUnsyncedGuard, useTicker } from '../lib/useOrders.js'
+import { Lock, Volume2, Package, Utensils, Check, X, RotateCcw, Sun, Moon } from 'lucide-react'
 import VegDot from '../components/VegDot.jsx'
 import ConnectionDot from '../components/ConnectionDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import OfflineBanner from '../components/OfflineBanner.jsx'
 
 const STALE_MINUTES = 15
 
@@ -70,11 +71,11 @@ export default function Pickup() {
 
 function PickupView() {
   const { orders, connection, unsyncedCount, collectOrder, voidOrder, reactivateOrder } = useOrders()
-  useWakeLock(true)
+  const { awake, toggle: toggleAwake } = useKeepAwake()
   useUnsyncedGuard(unsyncedCount)
   useTicker(1000) // refresh elapsed timers
 
-  const [soundOn, setSoundOn] = useState(false)
+  const [soundReady, setSoundReady] = useState(false)
   const [flashIds, setFlashIds] = useState(() => new Set())
   const [tab, setTab] = useState('active') // 'active' | 'past'
   const [confirmState, setConfirmState] = useState(null) // { kind, order }
@@ -118,26 +119,43 @@ function PickupView() {
     }
     const fresh = [...ids].filter((id) => !seenRef.current.has(id))
     if (fresh.length > 0) {
-      if (soundOn && beepRef.current) beepRef.current.beep()
+      if (beepRef.current) beepRef.current.beep()
       setFlashIds(new Set(fresh))
       const t = setTimeout(() => setFlashIds(new Set()), 1400)
       seenRef.current = ids
       return () => clearTimeout(t)
     }
     seenRef.current = ids
-  }, [active, soundOn])
+  }, [active])
 
-  async function enableSound() {
-    try {
-      const b = makeBeeper()
-      await b.unlock() // unlock audio within the user gesture
-      b.beep() // confirmation chime so they know it works
-      beepRef.current = b
-      setSoundOn(true)
-    } catch {
-      setSoundOn(true)
+  // Sound is "on by default": browsers require one interaction before audio is
+  // allowed, so we arm it on the FIRST tap/keypress anywhere on the screen
+  // (which happens within seconds of opening the view).
+  useEffect(() => {
+    if (soundReady) return
+    let done = false
+    const arm = async () => {
+      if (done) return
+      done = true
+      try {
+        const b = makeBeeper()
+        await b.unlock()
+        b.beep() // confirmation chime
+        beepRef.current = b
+      } catch {
+        /* ignore */
+      }
+      setSoundReady(true)
+      window.removeEventListener('pointerdown', arm)
+      window.removeEventListener('keydown', arm)
     }
-  }
+    window.addEventListener('pointerdown', arm)
+    window.addEventListener('keydown', arm)
+    return () => {
+      window.removeEventListener('pointerdown', arm)
+      window.removeEventListener('keydown', arm)
+    }
+  }, [soundReady])
 
   return (
     <div className="min-h-screen bg-slate-100 pb-6">
@@ -149,28 +167,34 @@ function PickupView() {
           Pickup <span className="text-slate-400">({active.length})</span>
         </h1>
         <div className="flex items-center gap-2">
-          {!soundOn ? (
-            <button
-              onClick={enableSound}
-              className="flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white"
-            >
-              <Volume2 size={16} /> Sound
-            </button>
-          ) : (
-            <button
-              onClick={() => beepRef.current?.beep()}
-              className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700"
-              title="Test the alert sound"
-            >
-              <Volume2 size={16} /> Test
-            </button>
-          )}
+          <button
+            onClick={() => beepRef.current?.beep()}
+            className="flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700"
+            title="Test the alert sound"
+          >
+            <Volume2 size={16} /> Test
+          </button>
+          <button
+            onClick={toggleAwake}
+            className={`p-1 ${awake ? 'text-amber-500' : 'text-slate-400'}`}
+            title={awake ? 'Screen stays awake (tap to allow sleep)' : 'Screen can sleep (tap to keep awake)'}
+          >
+            {awake ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           <ConnectionDot connection={connection} unsyncedCount={unsyncedCount} />
           <button onClick={() => lockView('pickup')} className="p-1 text-slate-500" title="Lock view">
             <Lock size={20} />
           </button>
         </div>
       </header>
+
+      <OfflineBanner connection={connection} />
+
+      {!soundReady && (
+        <div className="bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-800">
+          Tap anywhere to turn on the new-order sound
+        </div>
+      )}
 
       {/* Active / Past tabs */}
       <div className="sticky top-[57px] z-10 flex gap-2 bg-slate-100 px-3 py-2">

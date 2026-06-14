@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Lock, BarChart3, UtensilsCrossed, Banknote, CreditCard, Trash2, Plus, Check } from 'lucide-react'
+import {
+  Lock, BarChart3, UtensilsCrossed, Wallet, Banknote, CreditCard, Trash2, Plus, Check,
+} from 'lucide-react'
 import { euro, todayISO, clockTime } from '../lib/format.js'
 import { useOrders } from '../lib/useOrders.js'
 import { useMenu } from '../lib/useMenu.js'
 import { blankItem } from '../lib/menuStore.js'
+import { useExpenses } from '../lib/useExpenses.js'
+import { blankExpense, totalExpenses } from '../lib/expensesStore.js'
 import menu from '../menu.config.js'
 import VegDot from '../components/VegDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
@@ -47,8 +51,13 @@ function AdminView() {
         <AdminTab active={tab === 'menu'} onClick={() => setTab('menu')}>
           <UtensilsCrossed size={18} /> Menu
         </AdminTab>
+        <AdminTab active={tab === 'expenses'} onClick={() => setTab('expenses')}>
+          <Wallet size={18} /> Costs
+        </AdminTab>
       </div>
-      {tab === 'reports' ? <ReportsBody /> : <MenuEditor />}
+      {tab === 'reports' && <ReportsBody />}
+      {tab === 'menu' && <MenuEditor />}
+      {tab === 'expenses' && <ExpensesEditor />}
     </div>
   )
 }
@@ -68,6 +77,7 @@ function AdminTab({ active, onClick, children }) {
 
 function ReportsBody() {
   const { orders } = useOrders()
+  const { expenses } = useExpenses()
   const [date, setDate] = useState(todayISO())
 
   const dayOrders = useMemo(
@@ -79,8 +89,22 @@ function ReportsBody() {
   )
   const stats = useMemo(() => computeStats(dayOrders), [dayOrders])
 
+  // Break-even is all-time: net earned across every day vs total costs.
+  const breakEven = useMemo(() => {
+    let net = 0
+    for (const o of orders) {
+      if (o.status === 'voided') continue
+      net += (Number(o.total) || 0) - (Number(o.vat) || 0)
+    }
+    const costs = totalExpenses(expenses)
+    return { net, costs }
+  }, [orders, expenses])
+
   return (
     <div className="px-4 py-4">
+        {/* Break-even tracker (all-time) */}
+        <BreakEven net={breakEven.net} costs={breakEven.costs} />
+
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <input
             type="date"
@@ -157,40 +181,26 @@ function ReportsBody() {
           <LineChart data={stats.cumulative} format={euro} />
         </Section>
 
-        {/* Orders per 30 min */}
-        <Section title="Orders per 30 min">
-          <BarChart data={stats.buckets.map((b) => ({ label: b.label, value: b.count }))} color="#7c3aed" />
-        </Section>
-
-        {/* Revenue per 30 min */}
-        <Section title="Revenue per 30 min">
+        {/* Sales by 30-min slot (with order counts) */}
+        <Section title="Busiest times (sales per 30 min)">
           <BarChart
-            data={stats.buckets.map((b) => ({ label: b.label, value: b.revenue }))}
+            data={stats.buckets.map((b) => ({ label: b.label, value: b.revenue, sub: `${b.count}` }))}
             color="#0ea5e9"
             format={euro}
           />
+          <p className="mt-1 text-xs text-slate-400">Bar = € sold · small number = orders</p>
         </Section>
 
-        {/* Order type + veg split */}
-        <Section title="Dine-in vs Parcel (orders)">
-          <div className="flex items-center gap-4">
-            <Donut
-              segments={[
-                { label: 'Dine-in', value: stats.dinein, color: '#0ea5e9' },
-                { label: 'Parcel', value: stats.parcel, color: '#f97316' },
-              ]}
-            />
-            <div className="flex-1">
-              <SplitBar
-                segments={[
-                  { label: 'Dine-in', value: stats.dinein, color: '#0ea5e9' },
-                  { label: 'Parcel', value: stats.parcel, color: '#f97316' },
-                ]}
-              />
-            </div>
-          </div>
-        </Section>
-        <Section title="Veg vs Non-veg (items sold)">
+        {/* Order mix — two compact bars, no redundant donut */}
+        <Section title="Order mix">
+          <p className="mb-1 text-sm font-semibold text-slate-600">Dine-in vs Parcel (orders)</p>
+          <SplitBar
+            segments={[
+              { label: 'Dine-in', value: stats.dinein, color: '#0ea5e9' },
+              { label: 'Parcel', value: stats.parcel, color: '#f97316' },
+            ]}
+          />
+          <p className="mb-1 mt-4 text-sm font-semibold text-slate-600">Veg vs Non-veg (items)</p>
           <SplitBar
             segments={[
               { label: 'Veg', value: stats.vegQty, color: '#16a34a' },
@@ -199,27 +209,26 @@ function ReportsBody() {
           />
         </Section>
 
-        {/* Revenue by category */}
-        <Section title="Revenue by category">
-          <BarList rows={stats.categoryRevenue} format={euro} />
-        </Section>
-
-        {/* Best sellers */}
-        <Section title="Best sellers">
+        {/* Top sellers — visual bars ranked by quantity */}
+        <Section title="Top sellers">
           {stats.bestSellers.length === 0 ? (
             <Empty />
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {stats.bestSellers.map((b) => (
-                <li key={b.name} className="flex items-center gap-2 py-2">
-                  <VegDot veg={b.veg} />
-                  <span className="flex-1 font-semibold text-slate-800">{b.name}</span>
-                  <span className="text-sm text-slate-400">{euro(b.revenue)}</span>
-                  <span className="w-10 text-right font-bold text-slate-900">{b.qty}</span>
-                </li>
-              ))}
-            </ul>
+            <BarList
+              rows={stats.bestSellers.slice(0, 8).map((b) => ({
+                label: b.name,
+                value: b.qty,
+                veg: b.veg,
+                note: euro(b.revenue),
+              }))}
+              format={(v) => `${v} sold`}
+            />
           )}
+        </Section>
+
+        {/* Revenue by category */}
+        <Section title="Revenue by category">
+          <BarList rows={stats.categoryRevenue} format={euro} />
         </Section>
 
         {/* Order log */}
@@ -381,9 +390,14 @@ function BarChart({ data, color = '#7c3aed', format = (v) => v }) {
               <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#334155">
                 {typeof d.value === 'number' && !Number.isInteger(d.value) ? d.value.toFixed(0) : format(d.value)}
               </text>
-              <text x={x + barW / 2} y={chartH + 18} textAnchor="middle" fontSize="10" fill="#94a3b8">
+              <text x={x + barW / 2} y={chartH + 16} textAnchor="middle" fontSize="10" fill="#94a3b8">
                 {d.label}
               </text>
+              {d.sub != null && (
+                <text x={x + barW / 2} y={chartH + 28} textAnchor="middle" fontSize="9" fill="#cbd5e1">
+                  {d.sub}
+                </text>
+              )}
             </g>
           )
         })}
@@ -424,8 +438,10 @@ function BarList({ rows, format = (v) => v }) {
     <ul className="space-y-2">
       {rows.map((r) => (
         <li key={r.label}>
-          <div className="mb-0.5 flex justify-between text-sm">
-            <span className="font-semibold text-slate-700">{r.label}</span>
+          <div className="mb-0.5 flex items-center gap-1.5 text-sm">
+            {r.veg != null && <VegDot veg={r.veg} size={13} />}
+            <span className="flex-1 font-semibold text-slate-700">{r.label}</span>
+            {r.note && <span className="text-xs text-slate-400">{r.note}</span>}
             <span className="text-slate-500">{format(r.value)}</span>
           </div>
           <div className="h-2.5 w-full rounded-full bg-slate-100">
@@ -725,6 +741,177 @@ function MenuEditor() {
       </button>
 
       {/* Sticky save bar */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-slate-200 bg-white px-3 py-3"
+        style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}
+      >
+        {saved && !dirty && (
+          <span className="flex items-center gap-1 text-sm font-bold text-emerald-600">
+            <Check size={16} /> Saved
+          </span>
+        )}
+        <button
+          onClick={discard}
+          disabled={!dirty}
+          className="ml-auto min-h-touch rounded-xl bg-slate-100 px-4 py-3 font-bold text-slate-700 disabled:opacity-40"
+        >
+          Discard
+        </button>
+        <button
+          onClick={save}
+          disabled={!dirty}
+          className="min-h-touch rounded-xl bg-violet-600 px-6 py-3 font-bold text-white disabled:bg-slate-300"
+        >
+          Save changes
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---- Break-even ------------------------------------------------------------
+
+function BreakEven({ net, costs }) {
+  const pct = costs > 0 ? Math.min(100, (net / costs) * 100) : net > 0 ? 100 : 0
+  const remaining = costs - net
+  const broke = remaining <= 0 && costs > 0
+  return (
+    <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Break-even (all days)</h2>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+            broke ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+          }`}
+        >
+          {broke ? 'Reached' : `${Math.round(pct)}%`}
+        </span>
+      </div>
+      <div className="mt-2 flex items-end justify-between">
+        <div>
+          <p className="text-xs text-slate-400">Net earned so far</p>
+          <p className="text-3xl font-black text-slate-900">{euro(net)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-slate-400">Total costs</p>
+          <p className="text-lg font-bold text-slate-600">{euro(costs)}</p>
+        </div>
+      </div>
+      <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-100">
+        <div
+          className="h-3 rounded-full"
+          style={{ width: `${pct}%`, background: broke ? '#16a34a' : '#f59e0b' }}
+        />
+      </div>
+      <p className="mt-2 text-center text-sm font-bold">
+        {broke ? (
+          <span className="text-emerald-600">Broke even — profit {euro(-remaining)} 🎉</span>
+        ) : (
+          <span className="text-amber-700">{euro(Math.max(0, remaining))} more to break even</span>
+        )}
+      </p>
+      {costs === 0 && (
+        <p className="mt-1 text-center text-xs text-slate-400">Add your costs in the Costs tab.</p>
+      )}
+    </div>
+  )
+}
+
+// ---- Expenses editor ------------------------------------------------------
+
+function ExpensesEditor() {
+  const { expenses, saveExpenses } = useExpenses()
+  const [draft, setDraft] = useState(expenses)
+  const [dirty, setDirty] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!dirty) setDraft(expenses)
+  }, [expenses, dirty])
+
+  const total = draft.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  const touch = () => {
+    setDirty(true)
+    setSaved(false)
+  }
+  const update = (id, patch) => {
+    touch()
+    setDraft((d) => d.map((e) => (e.id === id ? { ...e, ...patch } : e)))
+  }
+  const remove = (id) => {
+    touch()
+    setDraft((d) => d.filter((e) => e.id !== id))
+  }
+  const add = () => {
+    touch()
+    setDraft((d) => [...d, blankExpense()])
+  }
+  async function save() {
+    const clean = draft
+      .filter((e) => e.label.trim() || e.amount)
+      .map((e) => ({ ...e, label: e.label.trim() || 'Untitled', amount: Number(e.amount) || 0 }))
+    await saveExpenses(clean)
+    setDraft(clean)
+    setDirty(false)
+    setSaved(true)
+  }
+  function discard() {
+    setDraft(expenses)
+    setDirty(false)
+    setSaved(false)
+  }
+
+  return (
+    <div className="px-4 py-4 pb-28">
+      <p className="mb-3 text-sm text-slate-500">
+        Your costs — used for the break-even tracker on the Reports tab.
+      </p>
+
+      <div className="mb-3 flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+        <span className="text-lg font-bold text-slate-600">Total costs</span>
+        <span className="text-2xl font-black text-slate-900">{euro(total)}</span>
+      </div>
+
+      <ul className="space-y-2">
+        {draft.map((e) => (
+          <li key={e.id} className="flex items-center gap-2 rounded-xl bg-white p-2 shadow-sm ring-1 ring-black/5">
+            <input
+              value={e.label}
+              onChange={(ev) => update(e.id, { label: ev.target.value })}
+              placeholder="What for"
+              className="min-h-touch min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-base font-semibold"
+            />
+            <div className="flex items-center gap-1 rounded-lg border border-slate-300 px-2">
+              <span className="text-slate-400">€</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={e.amount === 0 ? '' : e.amount}
+                onChange={(ev) => update(e.id, { amount: parseFloat(ev.target.value) || 0 })}
+                placeholder="0.00"
+                className="min-h-touch w-24 py-2 text-base font-bold"
+              />
+            </div>
+            <button
+              onClick={() => remove(e.id)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-red-500 active:bg-red-50"
+              aria-label={`Delete ${e.label || 'cost'}`}
+            >
+              <Trash2 size={20} />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={add}
+        className="mt-3 flex min-h-touch w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-3 text-base font-bold text-slate-500 active:bg-slate-50"
+      >
+        <Plus size={20} /> Add cost
+      </button>
+
       <div
         className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-slate-200 bg-white px-3 py-3"
         style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}

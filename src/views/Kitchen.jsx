@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { elapsed } from '../lib/format.js'
-import { useOrders, useWakeLock, useTicker } from '../lib/useOrders.js'
-import { Lock, Package, Utensils } from 'lucide-react'
+import { useOrders, useKeepAwake, useTicker } from '../lib/useOrders.js'
+import { Lock, Package, Utensils, Sun, Moon } from 'lucide-react'
 import VegDot from '../components/VegDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
+import OfflineBanner from '../components/OfflineBanner.jsx'
 
 // Read-only, dark, oversized queue for kitchen staff to glance at.
 export default function Kitchen() {
@@ -22,8 +23,8 @@ export default function Kitchen() {
 }
 
 function KitchenView() {
-  const { orders } = useOrders()
-  useWakeLock(true)
+  const { orders, connection } = useOrders()
+  const { awake, toggle: toggleAwake } = useKeepAwake()
   useTicker(1000)
 
   const active = useMemo(
@@ -42,12 +43,21 @@ function KitchenView() {
         </p>
       </header>
 
+      <OfflineBanner connection={connection} />
+
       <div className="flex items-center justify-between px-4 py-2 text-slate-400">
         <Link to="/" className="text-sm">
           ← Home
         </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold">{active.length} active</span>
+          <button
+            onClick={toggleAwake}
+            className={`p-1 ${awake ? 'text-amber-400' : 'text-slate-500'}`}
+            title={awake ? 'Screen stays awake' : 'Screen can sleep'}
+          >
+            {awake ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <button onClick={() => lockView('kitchen')} className="p-1" title="Lock view">
             <Lock size={18} />
           </button>

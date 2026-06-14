@@ -1,18 +1,43 @@
-import { Link } from 'react-router-dom'
-import { Receipt, BellRing, CookingPot, Settings } from 'lucide-react'
+import { useRef } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Receipt, BellRing, CookingPot } from 'lucide-react'
 
+// Admin is intentionally NOT listed here — it's hidden (see secret gesture below).
 const LINKS = [
   { to: '/cashier', label: 'Cashier', sub: 'Take orders', Icon: Receipt, cls: 'bg-blue-600' },
   { to: '/pickup', label: 'Pickup', sub: 'Assemble & call', Icon: BellRing, cls: 'bg-emerald-600' },
   { to: '/kitchen', label: 'Kitchen', sub: 'Read-only queue', Icon: CookingPot, cls: 'bg-slate-800' },
-  { to: '/reports', label: 'Admin', sub: 'Menu & reports', Icon: Settings, cls: 'bg-violet-600' },
 ]
 
 export default function Home() {
+  const navigate = useNavigate()
+  const taps = useRef(0)
+  const timer = useRef(null)
+
+  // Secret admin access: tap the title 5 times quickly. Nothing on screen hints
+  // at it, so staff/customers never stumble into the owner's reports.
+  function secretTap() {
+    taps.current += 1
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      taps.current = 0
+    }, 1500)
+    if (taps.current >= 5) {
+      taps.current = 0
+      navigate('/reports')
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-8">
       <header className="mb-8 text-center">
-        <h1 className="text-3xl font-extrabold text-slate-900">Stall Orders</h1>
+        <h1
+          className="cursor-default select-none text-3xl font-extrabold text-slate-900"
+          onClick={secretTap}
+          title=""
+        >
+          Stall Orders
+        </h1>
         <p className="mt-1 text-slate-500">Bookmark a view on each device</p>
       </header>
 

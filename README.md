@@ -14,7 +14,11 @@ even offline.
 | `/cashier`  | Cashier     | Tap-to-order menu, cart, change calculator, sends order numbers |
 | `/pickup`   | Pickup crew | Active orders oldest-first, mark Collected / Void, new-order beep |
 | `/kitchen`  | Kitchen     | Dark, oversized, read-only queue |
-| `/reports`  | Owner       | PIN-protected **Admin**: Reports (charts, CSV) + **Menu editor** |
+| `/reports`  | Owner       | PIN-protected **Admin**: Reports + break-even, **Menu** editor, **Costs** editor |
+
+**Admin is hidden** from the home screen. To open it, **tap the "Stall Orders" title 5
+times quickly** (or just go to `/reports` directly). This keeps staff/customers out of
+the owner's reports.
 
 Open each URL on the relevant device and bookmark it / add to home screen.
 
