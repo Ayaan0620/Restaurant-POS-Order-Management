@@ -1,18 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { acceptableCreds } from '../lib/pins.js'
 
-// Per-view PIN gate.
+// Per-view PIN gate with a privilege hierarchy (see lib/pins.js):
+// a view is opened by its own role PIN or any higher role's PIN.
+// If no PIN is configured for the view's level or above, the view is open.
 //
-// SECURITY: prefer the *hashed* form. Each view can be configured with either:
-//   - VITE_<VIEW>_PIN_HASH : the SHA-256 hex of the PIN (recommended — no
-//                            plaintext password ends up in the shipped bundle)
-//   - VITE_<VIEW>_PIN      : the plaintext PIN (simple, but readable in source)
-// If neither is set, the view is open (no gate).
-//
-// Generate a hash with:  npm run hash-pin -- 1234
-//
-// Note: this gates the UI only. It is deterrence, not strong security — see the
-// README "Security" section. For true protection use a real login.
+// PINs are stored as SHA-256 hashes (preferred) so no plaintext ships in the
+// bundle. This gates the UI only — deterrence, not strong security.
 
 const storageKey = (viewKey) => `pin_ok_${viewKey}`
 
@@ -21,18 +16,11 @@ async function sha256Hex(str) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-// The "expected" token we compare against: the hash if configured, else the
-// plaintext PIN, else null (open).
-function expectedToken({ pin, pinHash }) {
-  if (pinHash) return String(pinHash).trim().toLowerCase()
-  if (pin) return String(pin)
-  return null
-}
-
-function isUnlocked(viewKey, token) {
-  if (!token) return true // no PIN configured -> open
+function isUnlocked(viewKey, creds) {
+  if (creds.length === 0) return true // nothing configured -> open
   try {
-    return localStorage.getItem(storageKey(viewKey)) === token
+    const saved = localStorage.getItem(storageKey(viewKey))
+    return creds.some((c) => c.token === saved)
   } catch {
     return false
   }
@@ -48,10 +36,9 @@ export function lockView(viewKey) {
   window.location.reload()
 }
 
-export default function PinGate({ viewKey, pin, pinHash, title, accent = '#2563eb', children }) {
-  const token = expectedToken({ pin, pinHash })
-  const hashed = Boolean(pinHash)
-  const [ok, setOk] = useState(() => isUnlocked(viewKey, token))
+export default function PinGate({ viewKey, title, accent = '#2563eb', children }) {
+  const creds = acceptableCreds(viewKey)
+  const [ok, setOk] = useState(() => isUnlocked(viewKey, creds))
   const [entry, setEntry] = useState('')
   const [error, setError] = useState(false)
   const [checking, setChecking] = useState(false)
@@ -59,13 +46,14 @@ export default function PinGate({ viewKey, pin, pinHash, title, accent = '#2563e
   if (ok) return children
 
   async function submit() {
-    if (!token || checking) return
+    if (creds.length === 0 || checking || entry === '') return
     setChecking(true)
     try {
-      const candidate = hashed ? await sha256Hex(entry) : entry
-      if (candidate === token && entry !== '') {
+      const hashedEntry = await sha256Hex(entry)
+      const match = creds.find((c) => (c.hashed ? hashedEntry === c.token : entry === c.token))
+      if (match) {
         try {
-          localStorage.setItem(storageKey(viewKey), token)
+          localStorage.setItem(storageKey(viewKey), match.token)
         } catch {
           /* ignore */
         }

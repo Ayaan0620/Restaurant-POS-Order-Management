@@ -45,14 +45,21 @@ Edit `.env`:
 ```
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY
-# Each view has its own PIN. Store SHA-256 HASHES so no plaintext PIN ships in
-# the app. Generate one with:  npm run hash-pin -- 1234
+# Four role PINs, stored as SHA-256 HASHES so no plaintext ships in the app.
+# Generate one with:  npm run hash-pin -- 1234   (REPORTS = the Admin role)
 VITE_CASHIER_PIN_HASH=<hash>
 VITE_PICKUP_PIN_HASH=<hash>
 VITE_KITCHEN_PIN_HASH=<hash>
 VITE_REPORTS_PIN_HASH=<hash>
 ```
-See **Security** below for what these do and don't protect.
+
+**PIN hierarchy** (higher roles open lower views):
+- **Admin** (reports PIN) → opens everything
+- **Cashier** → cashier, pickup, kitchen (not admin)
+- **Kitchen / Pickup** (floor staff) → both the kitchen and pickup screens
+
+So a view accepts its own PIN or any higher role's PIN. See **Security** below for
+what these do and don't protect.
 
 > **Upgrading an existing database?** The simplest, safest way to get every new
 > column and table is to **paste the whole [`supabase/schema.sql`](supabase/schema.sql)
