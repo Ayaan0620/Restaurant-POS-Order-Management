@@ -48,13 +48,7 @@ function useGroupedMenu(menu) {
 
 export default function Cashier() {
   return (
-    <PinGate
-      viewKey="cashier"
-      pin={import.meta.env.VITE_CASHIER_PIN}
-      pinHash={import.meta.env.VITE_CASHIER_PIN_HASH}
-      title="Cashier"
-      accent="#ea580c"
-    >
+    <PinGate viewKey="cashier" title="Cashier" accent="#ea580c">
       <CashierView />
     </PinGate>
   )
@@ -85,7 +79,7 @@ function CashierView() {
   const [discountPct, setDiscountPct] = useState(0)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [tab, setTab] = useState('cart')
-  const [tendered, setTendered] = useState('') // raw text, may use a comma decimal
+  const [tendered, setTendered] = useState(0) // running total the customer handed over
   const [overlay, setOverlay] = useState(null)
   const [sending, setSending] = useState(false)
 
@@ -121,7 +115,7 @@ function CashierView() {
   }
   function resetOrder() {
     setCart([])
-    setTendered('')
+    setTendered(0)
     setOrderType('dinein')
     setPayment('cash')
     setDiscountPct(0)
@@ -150,8 +144,7 @@ function CashierView() {
     }
   }
 
-  const tenderedNum = parseDecimal(tendered)
-  const change = tenderedNum - total
+  const change = round2(tendered - total)
 
   return (
     <div className="min-h-screen bg-slate-100 pb-28">
@@ -271,13 +264,7 @@ function CashierView() {
           />
         )}
         {tab === 'change' && (
-          <ChangePanel
-            total={total}
-            tendered={tendered}
-            tenderedNum={tenderedNum}
-            setTendered={setTendered}
-            change={change}
-          />
+          <ChangePanel total={total} tendered={tendered} setTendered={setTendered} change={change} />
         )}
         {tab === 'history' && <HistoryPanel orders={todaysOrders} />}
       </BottomSheet>
@@ -500,44 +487,77 @@ function CartPanel({
   )
 }
 
-function ChangePanel({ total, tendered, tenderedNum, setTendered, change }) {
+function ChangePanel({ total, tendered, setTendered, change }) {
+  const [addStr, setAddStr] = useState('')
+  const addAmount = (n) => {
+    if (n > 0) setTendered((t) => round2(t + n))
+  }
+  const addCustom = () => {
+    const n = parseDecimal(addStr)
+    if (n > 0) {
+      addAmount(n)
+      setAddStr('')
+    }
+  }
+
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between">
         <span className="text-lg text-slate-600">Order total</span>
         <span className="text-2xl font-bold text-slate-900">{euro(total)}</span>
       </div>
-      <p className="mt-4 text-sm font-medium text-slate-500">Customer hands over</p>
+
+      <p className="mt-4 text-sm font-medium text-slate-500">Customer hands over — tap to add</p>
       <div className="mt-2 grid grid-cols-4 gap-2">
         {PRESETS.map((p) => (
           <button
             key={p}
-            onClick={() => setTendered(String(p))}
-            className={`min-h-touch rounded-xl py-3 text-lg font-bold ${
-              tenderedNum === p ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
-            }`}
+            onClick={() => addAmount(p)}
+            className="min-h-touch rounded-xl bg-slate-100 py-3 text-lg font-bold text-slate-700 active:bg-slate-200"
           >
-            €{p}
+            +€{p}
           </button>
         ))}
       </div>
-      <label className="mt-3 block text-sm font-medium text-slate-500">Custom amount</label>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={tendered}
-        onChange={(e) => setTendered(e.target.value)}
-        placeholder="0,00"
-        className="mt-1 min-h-touch w-full rounded-xl border border-slate-300 px-4 py-3 text-2xl font-bold"
-      />
+
+      <div className="mt-2 flex gap-2">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={addStr}
+          onChange={(e) => setAddStr(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addCustom()}
+          placeholder="Other amount, e.g. 3,50"
+          className="min-h-touch min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-lg font-bold"
+        />
+        <button
+          onClick={addCustom}
+          className="min-h-touch rounded-xl bg-slate-800 px-5 text-base font-bold text-white active:bg-slate-900"
+        >
+          Add
+        </button>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-base text-slate-500">Given</span>
+        <div className="flex items-center gap-3">
+          <span className="text-2xl font-black text-slate-900">{euro(tendered)}</span>
+          <button
+            onClick={() => setTendered(0)}
+            className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600 active:bg-slate-200"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
       <div className="mt-4 rounded-xl bg-slate-900 p-5 text-center text-white">
-        <p className="text-sm uppercase tracking-widest text-slate-400">Change due</p>
+        <p className="text-sm uppercase tracking-widest text-slate-400">
+          {change < 0 ? 'Still owed' : 'Change due'}
+        </p>
         <p className={`text-5xl font-black ${change < 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
           {euro(Math.abs(change))}
         </p>
-        {change < 0 && tenderedNum > 0 && (
-          <p className="mt-1 text-sm text-amber-300">Short by this amount</p>
-        )}
       </div>
     </div>
   )
