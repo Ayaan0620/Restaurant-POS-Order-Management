@@ -22,6 +22,7 @@ import VegDot from '../components/VegDot.jsx'
 import ConnectionDot from '../components/ConnectionDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
 import OfflineBanner from '../components/OfflineBanner.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
 const PRESETS = [5, 10, 20, 50] // change-calculator cash denominations
 const DISCOUNTS = [5, 10, 15, 20] // discount % quick buttons
@@ -55,7 +56,7 @@ export default function Cashier() {
 }
 
 function CashierView() {
-  const { createOrder, orders, nextOrderNumber, connection, unsyncedCount } = useOrders()
+  const { createOrder, voidOrder, orders, nextOrderNumber, connection, unsyncedCount } = useOrders()
   const { menu } = useMenu()
   const { awake, toggle: toggleAwake } = useKeepAwake()
   useUnsyncedGuard(unsyncedCount)
@@ -82,6 +83,7 @@ function CashierView() {
   const [tendered, setTendered] = useState(0) // running total the customer handed over
   const [overlay, setOverlay] = useState(null)
   const [sending, setSending] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState(null) // order pending cancel-confirm
 
   // ---- Money math ----
   // The customer pays the same whether cash or card. The 2% card fee is a COST
@@ -266,7 +268,7 @@ function CashierView() {
         {tab === 'change' && (
           <ChangePanel total={total} tendered={tendered} setTendered={setTendered} change={change} />
         )}
-        {tab === 'history' && <HistoryPanel orders={todaysOrders} />}
+        {tab === 'history' && <HistoryPanel orders={todaysOrders} onCancel={setCancelTarget} />}
       </BottomSheet>
 
       {overlay && (
@@ -281,6 +283,20 @@ function CashierView() {
           <p className="mt-6 text-sm text-brand-200">Tap anywhere to dismiss</p>
         </button>
       )}
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        danger
+        title={`Cancel order #${cancelTarget?.order_number}?`}
+        message="This voids the order — it's removed from the active queue and excluded from sales totals."
+        confirmLabel="Cancel order"
+        cancelLabel="Keep it"
+        onConfirm={() => {
+          voidOrder(cancelTarget.id)
+          setCancelTarget(null)
+        }}
+        onCancel={() => setCancelTarget(null)}
+      />
     </div>
   )
 }
@@ -563,7 +579,7 @@ function ChangePanel({ total, tendered, setTendered, change }) {
   )
 }
 
-function HistoryPanel({ orders }) {
+function HistoryPanel({ orders, onCancel }) {
   if (orders.length === 0) {
     return <p className="px-4 py-8 text-center text-slate-400">No orders yet today.</p>
   }
@@ -591,6 +607,14 @@ function HistoryPanel({ orders }) {
               </p>
             </div>
             <span className="shrink-0 font-bold text-slate-900">{euro(o.total)}</span>
+            {o.status === 'active' && (
+              <button
+                onClick={() => onCancel(o)}
+                className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-600 active:bg-red-100"
+              >
+                Cancel
+              </button>
+            )}
           </li>
         ))}
       </ul>
