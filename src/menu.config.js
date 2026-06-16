@@ -21,6 +21,7 @@ const menu = [
   { name: 'Chicken 65',          price: 6.5,  category: 'Starters & Rolls', veg: false },
   { name: 'Veg Roll',            price: 4.0,  category: 'Starters & Rolls', veg: true  },
   { name: 'Mutton Roll',         price: 5.5,  category: 'Starters & Rolls', veg: false },
+  { name: 'Ulunda Vada',         price: 3.5,  category: 'Starters & Rolls', veg: true  },
 
   // ---- Kothu & Parota ----
   { name: 'Kothu Parota (Veg)',  price: 6.0,  category: 'Kothu & Parota', veg: true  },
@@ -30,7 +31,6 @@ const menu = [
   // ---- Rice & Tiffin ----
   { name: 'Ghee Rice',           price: 5.0,  category: 'Rice & Tiffin', veg: true },
   { name: 'Idiyappam',           price: 5.5,  category: 'Rice & Tiffin', veg: true },
-  { name: 'Ulunda Vada',         price: 3.5,  category: 'Rice & Tiffin', veg: true },
 
   // ---- Gravy & Noodles ----
   { name: 'Chicken Chettinadu Gravy', price: 7.0, category: 'Gravy & Noodles', veg: false },
