@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORY_ORDER } from '../menu.config.js'
-import { euro, todayISO, clockTime } from '../lib/format.js'
+import { euro, todayISO, clockTime, parseDecimal } from '../lib/format.js'
 import { useOrders, useKeepAwake, useUnsyncedGuard } from '../lib/useOrders.js'
 import { useMenu } from '../lib/useMenu.js'
 import {
@@ -85,7 +85,7 @@ function CashierView() {
   const [discountPct, setDiscountPct] = useState(0)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [tab, setTab] = useState('cart')
-  const [tendered, setTendered] = useState(0)
+  const [tendered, setTendered] = useState('') // raw text, may use a comma decimal
   const [overlay, setOverlay] = useState(null)
   const [sending, setSending] = useState(false)
 
@@ -121,7 +121,7 @@ function CashierView() {
   }
   function resetOrder() {
     setCart([])
-    setTendered(0)
+    setTendered('')
     setOrderType('dinein')
     setPayment('cash')
     setDiscountPct(0)
@@ -150,7 +150,8 @@ function CashierView() {
     }
   }
 
-  const change = tendered - total
+  const tenderedNum = parseDecimal(tendered)
+  const change = tenderedNum - total
 
   return (
     <div className="min-h-screen bg-slate-100 pb-28">
@@ -270,7 +271,13 @@ function CashierView() {
           />
         )}
         {tab === 'change' && (
-          <ChangePanel total={total} tendered={tendered} setTendered={setTendered} change={change} />
+          <ChangePanel
+            total={total}
+            tendered={tendered}
+            tenderedNum={tenderedNum}
+            setTendered={setTendered}
+            change={change}
+          />
         )}
         {tab === 'history' && <HistoryPanel orders={todaysOrders} />}
       </BottomSheet>
@@ -493,7 +500,7 @@ function CartPanel({
   )
 }
 
-function ChangePanel({ total, tendered, setTendered, change }) {
+function ChangePanel({ total, tendered, tenderedNum, setTendered, change }) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between">
@@ -505,9 +512,9 @@ function ChangePanel({ total, tendered, setTendered, change }) {
         {PRESETS.map((p) => (
           <button
             key={p}
-            onClick={() => setTendered(p)}
+            onClick={() => setTendered(String(p))}
             className={`min-h-touch rounded-xl py-3 text-lg font-bold ${
-              tendered === p ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
+              tenderedNum === p ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
             }`}
           >
             €{p}
@@ -516,13 +523,11 @@ function ChangePanel({ total, tendered, setTendered, change }) {
       </div>
       <label className="mt-3 block text-sm font-medium text-slate-500">Custom amount</label>
       <input
-        type="number"
+        type="text"
         inputMode="decimal"
-        min="0"
-        step="0.01"
-        value={tendered || ''}
-        onChange={(e) => setTendered(parseFloat(e.target.value) || 0)}
-        placeholder="0.00"
+        value={tendered}
+        onChange={(e) => setTendered(e.target.value)}
+        placeholder="0,00"
         className="mt-1 min-h-touch w-full rounded-xl border border-slate-300 px-4 py-3 text-2xl font-bold"
       />
       <div className="mt-4 rounded-xl bg-slate-900 p-5 text-center text-white">
@@ -530,7 +535,9 @@ function ChangePanel({ total, tendered, setTendered, change }) {
         <p className={`text-5xl font-black ${change < 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
           {euro(Math.abs(change))}
         </p>
-        {change < 0 && tendered > 0 && <p className="mt-1 text-sm text-amber-300">Short by this amount</p>}
+        {change < 0 && tenderedNum > 0 && (
+          <p className="mt-1 text-sm text-amber-300">Short by this amount</p>
+        )}
       </div>
     </div>
   )
