@@ -59,6 +59,23 @@ export default function Home() {
         ))}
       </nav>
 
+      <p className="mb-3 mt-7 text-xs font-medium uppercase tracking-wider text-slate-400">Manage</p>
+      <nav className="flex flex-col gap-2.5">
+        <Link
+          to="/menu"
+          className="group flex min-h-touch items-center gap-4 rounded-xl border border-slate-200 bg-white px-4 py-4 transition-colors active:bg-slate-50"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <UtensilsCrossed size={20} strokeWidth={2} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-slate-900">Menu</p>
+            <p className="text-sm text-slate-500">Edit items &amp; prices</p>
+          </div>
+          <ChevronRight size={18} className="text-slate-300 group-active:text-slate-400" />
+        </Link>
+      </nav>
+
       <p className="mt-auto pt-10 text-center text-xs text-slate-400">
         Open a station on its device and add it to the home screen.
       </p>
