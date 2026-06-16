@@ -56,7 +56,8 @@ export default function Cashier() {
 }
 
 function CashierView() {
-  const { createOrder, voidOrder, orders, nextOrderNumber, connection, unsyncedCount } = useOrders()
+  const { createOrder, voidOrder, editOrder, orders, nextOrderNumber, connection, unsyncedCount } =
+    useOrders()
   const { menu } = useMenu()
   const { awake, toggle: toggleAwake } = useKeepAwake()
   useUnsyncedGuard(unsyncedCount)
@@ -81,9 +82,10 @@ function CashierView() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [tab, setTab] = useState('cart')
   const [tendered, setTendered] = useState(0) // running total the customer handed over
-  const [overlay, setOverlay] = useState(null)
+  const [overlay, setOverlay] = useState(null) // { number, updated }
   const [sending, setSending] = useState(false)
   const [cancelTarget, setCancelTarget] = useState(null) // order pending cancel-confirm
+  const [editing, setEditing] = useState(null) // { id, order_number } when editing an order
 
   // ---- Money math ----
   // The customer pays the same whether cash or card. The 2% card fee is a COST
@@ -121,15 +123,27 @@ function CashierView() {
     setOrderType('dinein')
     setPayment('cash')
     setDiscountPct(0)
+    setEditing(null)
     setTab('cart')
     setSheetOpen(false)
   }
 
-  async function sendOrder() {
+  // Load an existing active order back into the cart to edit it.
+  function startEdit(order) {
+    setCart(order.items.map((i) => ({ ...i })))
+    setDiscountPct(Number(order.discount_pct) || 0)
+    setPayment(order.payment_method || 'cash')
+    setOrderType(order.order_type || 'dinein')
+    setEditing({ id: order.id, order_number: order.order_number })
+    setTab('cart')
+    setSheetOpen(true)
+  }
+
+  async function submitOrder() {
     if (cart.length === 0 || sending) return
     setSending(true)
     try {
-      const order = await createOrder({
+      const fields = {
         items: cart.map(({ name, price, quantity, veg }) => ({ name, price, quantity, veg })),
         total,
         subtotal,
@@ -137,8 +151,14 @@ function CashierView() {
         vat: cardFee, // stored as the card cost for reporting (not charged)
         payment_method: payment,
         order_type: orderType,
-      })
-      setOverlay(order.order_number)
+      }
+      if (editing) {
+        await editOrder(editing.id, fields)
+        setOverlay({ number: editing.order_number, updated: true })
+      } else {
+        const order = await createOrder(fields)
+        setOverlay({ number: order.order_number, updated: false })
+      }
       resetOrder()
       setTimeout(() => setOverlay(null), 3000)
     } finally {
@@ -261,14 +281,18 @@ function CashierView() {
             setOrderType={setOrderType}
             changeQty={changeQty}
             removeItem={removeItem}
-            sendOrder={sendOrder}
+            sendOrder={submitOrder}
             sending={sending}
+            editing={editing}
+            onDiscardEdit={resetOrder}
           />
         )}
         {tab === 'change' && (
           <ChangePanel total={total} tendered={tendered} setTendered={setTendered} change={change} />
         )}
-        {tab === 'history' && <HistoryPanel orders={todaysOrders} onCancel={setCancelTarget} />}
+        {tab === 'history' && (
+          <HistoryPanel orders={todaysOrders} onCancel={setCancelTarget} onEdit={startEdit} />
+        )}
       </BottomSheet>
 
       {overlay && (
@@ -277,9 +301,13 @@ function CashierView() {
           className="fixed inset-0 z-50 flex w-full flex-col items-center justify-center bg-brand-600 text-white"
           aria-label="Dismiss order number"
         >
-          <p className="text-2xl font-semibold uppercase tracking-widest text-brand-100">Order</p>
-          <p className="text-[34vw] font-black leading-none">#{overlay}</p>
-          <p className="mt-4 text-lg text-brand-100">Write this on the sticky note</p>
+          <p className="text-2xl font-semibold uppercase tracking-widest text-brand-100">
+            {overlay.updated ? 'Updated' : 'Order'}
+          </p>
+          <p className="text-[34vw] font-black leading-none">#{overlay.number}</p>
+          <p className="mt-4 text-lg text-brand-100">
+            {overlay.updated ? 'Order updated' : 'Write this on the sticky note'}
+          </p>
           <p className="mt-6 text-sm text-brand-200">Tap anywhere to dismiss</p>
         </button>
       )}
@@ -390,9 +418,18 @@ function CartPanel({
   cart, gross, pct, discountAmt, subtotal, cardFee, total,
   payment, setPayment, discountPct, setDiscountPct,
   orderType, setOrderType, changeQty, removeItem, sendOrder, sending,
+  editing, onDiscardEdit,
 }) {
   return (
     <div className="px-4 py-3">
+      {editing && (
+        <div className="mb-2 flex items-center justify-between rounded-xl bg-amber-100 px-3 py-2 text-sm font-bold text-amber-800">
+          <span>Editing order #{editing.order_number}</span>
+          <button onClick={onDiscardEdit} className="rounded-lg bg-amber-200 px-2 py-1 text-amber-900">
+            Discard
+          </button>
+        </div>
+      )}
       {cart.length === 0 ? (
         <p className="py-8 text-center text-slate-400">Tap menu items to add them.</p>
       ) : (
@@ -497,7 +534,7 @@ function CartPanel({
         disabled={cart.length === 0 || sending}
         className="mt-3 min-h-touch w-full rounded-xl bg-brand-600 py-4 text-xl font-bold text-white disabled:bg-slate-300 active:bg-brand-700"
       >
-        {sending ? 'Sending…' : 'Send Order'}
+        {sending ? 'Saving…' : editing ? 'Save changes' : 'Send Order'}
       </button>
     </div>
   )
@@ -579,7 +616,7 @@ function ChangePanel({ total, tendered, setTendered, change }) {
   )
 }
 
-function HistoryPanel({ orders, onCancel }) {
+function HistoryPanel({ orders, onCancel, onEdit }) {
   if (orders.length === 0) {
     return <p className="px-4 py-8 text-center text-slate-400">No orders yet today.</p>
   }
@@ -608,12 +645,20 @@ function HistoryPanel({ orders, onCancel }) {
             </div>
             <span className="shrink-0 font-bold text-slate-900">{euro(o.total)}</span>
             {o.status === 'active' && (
-              <button
-                onClick={() => onCancel(o)}
-                className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-600 active:bg-red-100"
-              >
-                Cancel
-              </button>
+              <>
+                <button
+                  onClick={() => onEdit(o)}
+                  className="shrink-0 rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 active:bg-slate-200"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onCancel(o)}
+                  className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-600 active:bg-red-100"
+                >
+                  Cancel
+                </button>
+              </>
             )}
           </li>
         ))}
