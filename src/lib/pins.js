@@ -28,6 +28,7 @@ const ROLES = {
 const VIEW_MIN_LEVEL = {
   kitchen: 1, // floor staff and up
   pickup: 1, // floor staff and up
+  menu: 2, // cashier and up (edits prices)
   cashier: 2, // cashier and up
   reports: 3, // admin only
 }
