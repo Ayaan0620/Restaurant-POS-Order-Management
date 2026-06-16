@@ -29,21 +29,24 @@ const DISCOUNTS = [5, 10, 15, 20] // discount % quick buttons
 const CARD_FEE_RATE = 0.02 // 2% card cost — for REPORTING only, NOT charged to the customer
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
 
-// Group the live menu by category (ordered), splitting each category into a
-// veg column (left) and a non-veg column (right).
+// Two top-level sections — Vegetarian first, then Non-veg — each grouped into
+// food categories (in CATEGORY_ORDER), items filling a normal grid.
 function useGroupedMenu(menu) {
   return useMemo(() => {
-    const groups = {}
-    for (const item of menu) {
-      ;(groups[item.category] ||= []).push(item)
+    const build = (isVeg) => {
+      const groups = {}
+      for (const item of menu) {
+        if (Boolean(item.veg) !== isVeg) continue
+        ;(groups[item.category] ||= []).push(item)
+      }
+      const ordered = [...CATEGORY_ORDER.filter((c) => groups[c])]
+      for (const c of Object.keys(groups)) if (!ordered.includes(c)) ordered.push(c)
+      return ordered.map((c) => ({ category: c, items: groups[c] }))
     }
-    const ordered = [...CATEGORY_ORDER.filter((c) => groups[c])]
-    for (const c of Object.keys(groups)) if (!ordered.includes(c)) ordered.push(c)
-    return ordered.map((c) => ({
-      category: c,
-      veg: groups[c].filter((i) => i.veg),
-      nonveg: groups[c].filter((i) => !i.veg),
-    }))
+    return [
+      { veg: true, label: 'Vegetarian', categories: build(true) },
+      { veg: false, label: 'Non-veg', categories: build(false) },
+    ].filter((s) => s.categories.length > 0)
   }, [menu])
 }
 
@@ -212,36 +215,36 @@ function CashierView() {
 
       <OfflineBanner connection={connection} />
 
-      {/* Non-veg (left) vs Veg (right) column headers */}
-      <div className="grid grid-cols-2 gap-2 px-3 pt-3">
-        <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-red-700">
-          <VegDot veg={false} size={14} /> Non-veg
-        </p>
-        <p className="flex items-center justify-center gap-1.5 text-sm font-bold text-emerald-700">
-          <VegDot veg={true} size={14} /> Veg
-        </p>
-      </div>
-
       <main className="px-3 py-3">
-        {grouped.map(({ category, veg, nonveg }) => (
-          <section key={category} className="mb-5">
-            <h2 className="mb-2 px-1 text-sm font-bold uppercase tracking-wide text-slate-500">
-              {category}
-            </h2>
-            {/* Left column = non-veg, right column = veg */}
-            <div className="grid grid-cols-2 items-start gap-2">
-              <div className="space-y-2">
-                {nonveg.map((item) => (
-                  <MenuButton key={item.id} item={item} onAdd={addItem} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {veg.map((item) => (
-                  <MenuButton key={item.id} item={item} onAdd={addItem} />
-                ))}
-              </div>
+        {grouped.map((section) => (
+          <div key={section.label} className="mb-4">
+            <div
+              className={`mb-2 flex items-center gap-2 rounded-lg px-3 py-2 ${
+                section.veg ? 'bg-emerald-100' : 'bg-red-100'
+              }`}
+            >
+              <VegDot veg={section.veg} size={16} />
+              <h2
+                className={`text-sm font-extrabold uppercase tracking-wide ${
+                  section.veg ? 'text-emerald-800' : 'text-red-800'
+                }`}
+              >
+                {section.label}
+              </h2>
             </div>
-          </section>
+            {section.categories.map(({ category, items }) => (
+              <section key={category} className="mb-4">
+                <h3 className="mb-1.5 px-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+                  {category}
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {items.map((item) => (
+                    <MenuButton key={item.id} item={item} onAdd={addItem} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         ))}
       </main>
 
