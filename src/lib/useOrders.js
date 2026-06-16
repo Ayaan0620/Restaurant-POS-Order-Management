@@ -6,6 +6,7 @@ import {
   collectOrder,
   voidOrder,
   reactivateOrder,
+  editOrder,
   nextOrderNumber,
   flushOutbox,
 } from './orders.js'
@@ -27,6 +28,7 @@ export function useOrders() {
     collectOrder,
     voidOrder,
     reactivateOrder,
+    editOrder,
     nextOrderNumber,
     flushOutbox,
   }

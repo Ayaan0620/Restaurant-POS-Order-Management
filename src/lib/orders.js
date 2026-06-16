@@ -191,6 +191,24 @@ export async function voidOrder(id) {
   pushRecord(updated)
 }
 
+// Edit an existing order's contents (items/total/discount/payment/type). Keeps
+// the same id, order_number, created_at and date — re-syncs via upsert.
+export async function editOrder(id, fields) {
+  const r = get(id)
+  if (!r) return null
+  const updated = {
+    ...r,
+    ...fields,
+    _synced: false,
+    _seq: nextSeq(),
+    _op: 'edit',
+  }
+  saveLocal(updated)
+  emit()
+  pushRecord(updated)
+  return updated
+}
+
 // Redo / undo a mistake: put a collected or voided order back to active.
 export async function reactivateOrder(id) {
   const r = get(id)
