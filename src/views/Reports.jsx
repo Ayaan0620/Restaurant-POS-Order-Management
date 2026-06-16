@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Lock, BarChart3, UtensilsCrossed, Wallet, Banknote, CreditCard, Trash2, Plus, Check,
 } from 'lucide-react'
-import { euro, todayISO, clockTime } from '../lib/format.js'
+import { euro, todayISO, clockTime, parseDecimal, decimalInputValue } from '../lib/format.js'
 import { useOrders } from '../lib/useOrders.js'
 import { useMenu } from '../lib/useMenu.js'
 import { blankItem } from '../lib/menuStore.js'
@@ -652,7 +652,7 @@ function MenuEditor() {
       .map((i) => ({
         ...i,
         name: i.name.trim(),
-        price: Number(i.price) || 0,
+        price: parseDecimal(i.price),
         category: (i.category || '').trim() || 'Other',
         veg: !!i.veg,
       }))
@@ -706,13 +706,11 @@ function MenuEditor() {
               <div className="flex items-center gap-1 rounded-lg border border-slate-300 px-3">
                 <span className="text-slate-400">€</span>
                 <input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={it.price === 0 ? '' : it.price}
-                  onChange={(e) => update(it.id, { price: parseFloat(e.target.value) || 0 })}
-                  placeholder="0.00"
+                  value={decimalInputValue(it.price)}
+                  onChange={(e) => update(it.id, { price: e.target.value })}
+                  placeholder="0,00"
                   className="min-h-touch w-24 py-2 text-base font-bold"
                 />
               </div>
@@ -829,7 +827,7 @@ function ExpensesEditor() {
     if (!dirty) setDraft(expenses)
   }, [expenses, dirty])
 
-  const total = draft.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  const total = draft.reduce((s, e) => s + parseDecimal(e.amount), 0)
   const touch = () => {
     setDirty(true)
     setSaved(false)
@@ -848,8 +846,8 @@ function ExpensesEditor() {
   }
   async function save() {
     const clean = draft
-      .filter((e) => e.label.trim() || e.amount)
-      .map((e) => ({ ...e, label: e.label.trim() || 'Untitled', amount: Number(e.amount) || 0 }))
+      .filter((e) => e.label.trim() || parseDecimal(e.amount))
+      .map((e) => ({ ...e, label: e.label.trim() || 'Untitled', amount: parseDecimal(e.amount) }))
     await saveExpenses(clean)
     setDraft(clean)
     setDirty(false)
@@ -884,13 +882,11 @@ function ExpensesEditor() {
             <div className="flex items-center gap-1 rounded-lg border border-slate-300 px-2">
               <span className="text-slate-400">€</span>
               <input
-                type="number"
+                type="text"
                 inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={e.amount === 0 ? '' : e.amount}
-                onChange={(ev) => update(e.id, { amount: parseFloat(ev.target.value) || 0 })}
-                placeholder="0.00"
+                value={decimalInputValue(e.amount)}
+                onChange={(ev) => update(e.id, { amount: ev.target.value })}
+                placeholder="0,00"
                 className="min-h-touch w-24 py-2 text-base font-bold"
               />
             </div>
