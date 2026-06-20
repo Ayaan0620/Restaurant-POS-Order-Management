@@ -269,7 +269,7 @@ function TabBtn({ active, onClick, children }) {
 function ItemList({ items, muted }) {
   return (
     <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3">
-      {items.map((it, idx) => (
+      {(items || []).map((it, idx) => (
         <li
           key={idx}
           className={`flex items-center gap-2 rounded-lg border-l-4 px-2 py-1 text-lg ${

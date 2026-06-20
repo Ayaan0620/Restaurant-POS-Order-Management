@@ -2,8 +2,13 @@
 // Bells are inharmonic — we stack a few partials at bell-like ratios, each with
 // a fast attack and a long exponential decay, then play two notes (ding-dong).
 // Must be created inside a user gesture so the browser allows audio.
+// Reuse ONE AudioContext across arms/views — browsers cap concurrent contexts
+// (~6), and the new-order alert must never silently die mid-shift.
+let sharedCtx = null
+
 export function makeChime() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  sharedCtx = sharedCtx || new (window.AudioContext || window.webkitAudioContext)()
+  const ctx = sharedCtx
   const master = ctx.createGain()
   master.gain.value = 0.9
   master.connect(ctx.destination)

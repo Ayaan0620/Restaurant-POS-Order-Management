@@ -133,10 +133,11 @@ function CashierView() {
 
   // Load an existing active order back into the cart to edit it.
   function startEdit(order) {
-    setCart(order.items.map((i) => ({ ...i })))
+    setCart((order.items || []).map((i) => ({ ...i })))
     setDiscountPct(Number(order.discount_pct) || 0)
     setPayment(order.payment_method || 'cash')
     setOrderType(order.order_type || 'dinein')
+    setTendered(0) // fresh change-calc for the edited order
     setEditing({ id: order.id, order_number: order.order_number })
     setTab('cart')
     setSheetOpen(true)
@@ -637,7 +638,7 @@ function HistoryPanel({ orders, onCancel, onEdit }) {
             <span className="w-16 shrink-0 text-2xl font-black text-slate-900">#{o.order_number}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm text-slate-600">
-                {o.items.map((i) => `${i.quantity}× ${i.name}`).join(', ') || '—'}
+                {(o.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ') || '—'}
               </p>
               <p className="flex items-center gap-1 text-xs text-slate-400">
                 {clockTime(o.created_at)} ·
