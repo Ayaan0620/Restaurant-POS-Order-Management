@@ -277,12 +277,14 @@ function ReportsBody() {
 
 // ---- Stats ----------------------------------------------------------------
 
+// Discount = items gross − subtotal (exact; handles 100% with no divide-by-zero).
 function discountAmount(o) {
-  const pct = Number(o.discount_pct) || 0
+  const gross = (o.items || []).reduce(
+    (s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0),
+    0,
+  )
   const sub = Number(o.subtotal ?? o.total) || 0
-  if (pct <= 0 || pct >= 100) return 0
-  const gross = sub / (1 - pct / 100)
-  return gross - sub
+  return Math.max(0, Math.round((gross - sub) * 100) / 100)
 }
 
 function computeStats(dayOrders) {

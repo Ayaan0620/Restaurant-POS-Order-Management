@@ -91,7 +91,7 @@ function KitchenView() {
               </span>
             </div>
             <ul className="mt-3 space-y-1.5 border-t border-slate-800 pt-3">
-              {o.items.map((it, idx) => (
+              {(o.items || []).map((it, idx) => (
                 <li
                   key={idx}
                   className={`flex items-center gap-3 rounded-lg border-l-4 px-2 py-1 ${

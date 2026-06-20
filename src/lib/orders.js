@@ -256,26 +256,32 @@ async function pushRecord(record) {
 }
 
 // Push everything still in the outbox. Called on a loop and on reconnect.
+let flushing = false
 export async function flushOutbox() {
-  if (!supabase) return
-  const pending = unsynced()
-  if (pending.length === 0) {
-    setConnection('online')
-    return
-  }
-  let allOk = true
-  // Sort by sequence so earlier intents apply before later ones.
-  pending.sort((a, b) => (a._seq || 0) - (b._seq || 0))
-  for (const r of pending) {
-    const ok = await pushRecord(r)
-    if (!ok) {
-      allOk = false
-      break // stop on first failure; backoff will retry the rest
+  if (!supabase || flushing) return // re-entrancy guard: one flush at a time
+  flushing = true
+  try {
+    const pending = unsynced()
+    if (pending.length === 0) {
+      setConnection('online')
+      return
     }
-  }
-  if (allOk) {
-    backoff = 2000 // reset backoff after a clean flush
-    setConnection('online')
+    let allOk = true
+    // Sort by sequence so earlier intents apply before later ones.
+    pending.sort((a, b) => (a._seq || 0) - (b._seq || 0))
+    for (const r of pending) {
+      // Re-read in case a newer local edit superseded this snapshot.
+      const cur = get(r.id) || r
+      const ok = await pushRecord(cur)
+      // Keep going on failure — one un-pushable record must not strand the rest.
+      if (!ok) allOk = false
+    }
+    if (allOk) {
+      backoff = 2000 // reset backoff after a clean flush
+      setConnection('online')
+    }
+  } finally {
+    flushing = false
   }
 }
 
