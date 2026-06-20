@@ -24,7 +24,7 @@ import PinGate, { lockView } from '../components/PinGate.jsx'
 import OfflineBanner from '../components/OfflineBanner.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
-const PRESETS = [5, 10, 20, 50] // change-calculator cash denominations
+const PRESETS = [1, 2, 5, 10, 20, 50] // change-calculator: tap to add denominations
 const DISCOUNTS = [5, 10, 15, 20] // discount % quick buttons
 const CARD_FEE_RATE = 0.02 // 2% card cost — for REPORTING only, NOT charged to the customer
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -565,7 +565,7 @@ function ChangePanel({ total, tendered, setTendered, change }) {
       </div>
 
       <p className="mt-4 text-sm font-medium text-slate-500">Customer hands over — tap to add</p>
-      <div className="mt-2 grid grid-cols-4 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-2">
         {PRESETS.map((p) => (
           <button
             key={p}
