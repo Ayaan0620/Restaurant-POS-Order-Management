@@ -120,6 +120,18 @@ function CashierView() {
   function removeItem(name) {
     setCart((prev) => prev.filter((x) => x.name !== name))
   }
+  // Quick-add an off-menu euro amount; taps stack onto one "Custom amount" line.
+  function addCustomAmount(n) {
+    setCart((prev) => {
+      const i = prev.findIndex((x) => x.custom)
+      if (i === -1) {
+        return [...prev, { name: 'Custom amount', price: n, quantity: 1, veg: true, custom: true }]
+      }
+      const next = [...prev]
+      next[i] = { ...next[i], price: round2(next[i].price + n) }
+      return next
+    })
+  }
   function resetOrder() {
     setCart([])
     setTendered(0)
@@ -285,6 +297,7 @@ function CashierView() {
             setOrderType={setOrderType}
             changeQty={changeQty}
             removeItem={removeItem}
+            addCustomAmount={addCustomAmount}
             sendOrder={submitOrder}
             sending={sending}
             editing={editing}
@@ -421,7 +434,7 @@ function TabButton({ active, onClick, children }) {
 function CartPanel({
   cart, gross, pct, discountAmt, subtotal, cardFee, total,
   payment, setPayment, discountPct, setDiscountPct,
-  orderType, setOrderType, changeQty, removeItem, sendOrder, sending,
+  orderType, setOrderType, changeQty, removeItem, addCustomAmount, sendOrder, sending,
   editing, onDiscardEdit,
 }) {
   return (
@@ -440,7 +453,7 @@ function CartPanel({
         <ul className="divide-y divide-slate-100">
           {cart.map((i) => (
             <li key={i.name} className="flex items-center gap-2 py-2">
-              <VegDot veg={i.veg} />
+              {i.custom ? <span className="w-3 text-slate-400">€</span> : <VegDot veg={i.veg} />}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-slate-900">{i.name}</p>
                 <p className="text-sm text-slate-500">
@@ -468,6 +481,20 @@ function CartPanel({
           ))}
         </ul>
       )}
+
+      {/* Quick add off-menu euros */}
+      <p className="mt-4 text-sm font-medium text-slate-500">Quick add €</p>
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        {PRESETS.map((n) => (
+          <button
+            key={n}
+            onClick={() => addCustomAmount(n)}
+            className="min-h-touch rounded-xl bg-slate-100 py-3 text-base font-bold text-slate-700 active:bg-slate-200"
+          >
+            +€{n}
+          </button>
+        ))}
+      </div>
 
       {/* Discount */}
       <p className="mt-4 text-sm font-medium text-slate-500">Discount %</p>
