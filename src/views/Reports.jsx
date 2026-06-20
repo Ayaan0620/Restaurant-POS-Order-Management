@@ -5,12 +5,14 @@ import {
 } from 'lucide-react'
 import { euro, todayISO, clockTime, parseDecimal, decimalInputValue } from '../lib/format.js'
 import { useOrders } from '../lib/useOrders.js'
+import { clearLocalOrders } from '../lib/localStore.js'
 import { useExpenses } from '../lib/useExpenses.js'
 import { blankExpense, totalExpenses } from '../lib/expensesStore.js'
 import menu from '../menu.config.js'
 import VegDot from '../components/VegDot.jsx'
 import PinGate, { lockView } from '../components/PinGate.jsx'
 import MenuEditor from '../components/MenuEditor.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 
 // item name -> category, for the revenue-by-category breakdown.
 const ITEM_CATEGORY = Object.fromEntries(menu.map((m) => [m.name, m.category]))
@@ -251,7 +253,7 @@ function ReportsBody() {
                     <tr key={o.id} className="border-t border-slate-100 align-top">
                       <td className="py-2 pr-2 font-bold">{o.order_number}</td>
                       <td className="py-2 pr-2 text-slate-600">
-                        {o.items.map((i) => `${i.quantity}× ${i.name}`).join(', ')}
+                        {(o.items || []).map((i) => `${i.quantity}× ${i.name}`).join(', ')}
                         {Number(o.discount_pct) > 0 && (
                           <span className="ml-1 text-rose-500">(−{o.discount_pct}%)</span>
                         )}
@@ -271,7 +273,44 @@ function ReportsBody() {
             </div>
           )}
         </Section>
+
+        <DeviceReset />
     </div>
+  )
+}
+
+// Clears THIS device's local order cache for a clean-slate reset before service.
+function DeviceReset() {
+  const [confirm, setConfirm] = useState(false)
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">Maintenance</h2>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="mb-3 text-sm text-slate-500">
+          Clears this device&apos;s local order history and resets its order numbering. Do this on
+          every device for a fresh start. (Empty the server first.)
+        </p>
+        <button
+          onClick={() => setConfirm(true)}
+          className="min-h-touch w-full rounded-xl bg-red-50 py-3 font-bold text-red-600 active:bg-red-100"
+        >
+          Reset this device
+        </button>
+      </div>
+      <ConfirmDialog
+        open={confirm}
+        danger
+        title="Reset this device?"
+        message="Clears this device's local orders and reloads. Any orders not yet synced will be lost. Only do this before service for a clean start."
+        confirmLabel="Reset device"
+        cancelLabel="Keep"
+        onConfirm={async () => {
+          await clearLocalOrders()
+          window.location.reload()
+        }}
+        onCancel={() => setConfirm(false)}
+      />
+    </section>
   )
 }
 

@@ -172,3 +172,24 @@ export function upsertMany(records) {
 export function unsynced() {
   return [...mem.values()].filter((r) => !r._synced)
 }
+
+// Wipe this device's local order cache (both stores) for a clean-slate reset.
+// Use only when intentionally resetting before service — clears the outbox too.
+export async function clearLocalOrders() {
+  mem.clear()
+  try {
+    localStorage.removeItem(LS_KEY)
+    localStorage.removeItem(LS_SEQ)
+  } catch {
+    /* ignore */
+  }
+  try {
+    const db = await openIDB()
+    if (db) {
+      const tx = db.transaction(IDB_STORE, 'readwrite')
+      tx.objectStore(IDB_STORE).clear()
+    }
+  } catch {
+    /* ignore */
+  }
+}
